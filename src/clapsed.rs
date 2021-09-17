@@ -4,7 +4,19 @@
 extern crate  clap;
 use clap::{App, Arg, SubCommand};
 
+mod host;
+use host::*;
+use std::thread;
+use std::time::Duration;
+use std::process;
+
 pub fn clap_init() {
+    ctrlc::set_handler(move || {
+        println!("Say Good Bye!");
+        process::exit(0);
+    })
+    .expect("Error setting Ctrl-C handler");
+
 	let matches = App::new("My Super Program")
         .version("1.0")
         .author("Kevin K. <kbknapp@gmail.com>")
@@ -92,6 +104,16 @@ pub fn clap_init() {
             println!("Printing debug info...");
         } else {
             println!("Printing normally...");
+        }
+    }
+
+    if let Some(matches) = matches.subcommand_matches("monitor") {
+        if matches.is_present("lazy") {
+            loop {
+                thread::sleep(Duration::from_secs(1));
+                // println!("{}",Local::now())
+                monitor()
+            }
         }
     }
 }

@@ -7,12 +7,12 @@ static mut COUNT: u32 = 0;
 struct Title {}
 
 impl Title {
-	pub fn cputitle() -> ColoredString {
+	pub fn cpu() -> ColoredString {
 		"----cpu-usage--- ".bright_blue()
 	}
 
-	pub fn cpucolumn() -> ColoredString {
-		" usr sys idl iow|".bright_blue()
+	pub fn cpucolumns() -> ColoredString {
+		" usr sys idl iow|".bright_blue().underline()
 	}
 
 	pub fn time() -> ColoredString {
@@ -20,7 +20,7 @@ impl Title {
 	}
 
 	pub fn timecolumns() -> ColoredString {
-		"  time  |".bright_blue()
+		"  time  |".bright_blue().underline()
 	}
 
 	pub fn load() -> ColoredString {
@@ -28,7 +28,7 @@ impl Title {
 	}
 
 	pub fn loadcolumns() -> ColoredString {
-		"  1m    5m   15m |".bright_blue()
+		"  1m    5m   15m |".bright_blue().underline()
 	}
 
 	pub fn swap() -> ColoredString {
@@ -36,7 +36,7 @@ impl Title {
 	}
 
 	pub fn swapcolumns() -> ColoredString {
-		"   si   so|".bright_blue()
+		"   si   so|".bright_blue().underline()
 	}
 
 	pub fn net(detail: bool) -> ColoredString {
@@ -49,9 +49,9 @@ impl Title {
 
 	pub fn netcolumns(detail: bool) -> ColoredString {
 		if !detail {
-			"   recv   send|".bright_blue()
+			"   recv   send|".bright_blue().underline()
 		} else {
-			"   recv   send   psin   psot  errin  errot   dpin  dpout   ffin  ffout|".bright_blue()
+			"   recv   send   psin   psot  errin  errot   dpin  dpout   ffin  ffout|".bright_blue().underline()
 		}
 	}
 
@@ -60,7 +60,7 @@ impl Title {
 	}
 
 	pub fn diskcolumns() -> ColoredString {
-		" readc writec    srkB    swkB queue  await svctm %util|".bright_blue()
+		" readc writec    srkB    swkB queue  await svctm %util|".bright_blue().underline()
 	}
 
 	pub fn com() -> ColoredString {
@@ -68,7 +68,7 @@ impl Title {
 	}
 
 	pub fn comcolumns() -> ColoredString {
-		"  ins   upd   del    sel   iud|".bright_blue()
+		"  ins   upd   del    sel   iud|".bright_blue().underline()
 	}
 
 	pub fn hit() -> ColoredString {
@@ -76,7 +76,7 @@ impl Title {
 	}
 
 	pub fn hitcolumns() -> ColoredString {
-		"  read  write    cur  total lorhit readreq  inhit|".bright_blue()
+		"  read  write    cur  total lorhit readreq  inhit|".bright_blue().underline()
 	}
 
 	pub fn innodbrow() -> ColoredString {
@@ -84,7 +84,7 @@ impl Title {
 	}
 
 	pub fn innodbrowcolumns() -> ColoredString {
-		"  ins   upd   del   read|".bright_blue()
+		"  ins   upd   del   read|".bright_blue().underline()
 	}
 
 	pub fn innodbpages() -> ColoredString {
@@ -92,7 +92,7 @@ impl Title {
 	}
 
 	pub fn innodbpagescolumns() -> ColoredString {
-		"   data   free  dirty flush|".bright_blue()
+		"   data   free  dirty flush|".bright_blue().underline()
 	}
 
 	pub fn innodbdata() -> ColoredString {
@@ -104,7 +104,7 @@ impl Title {
 	}
 
 	pub fn innodblogcolmns() -> ColoredString {
-		"fsyncs written|".bright_blue()
+		"fsyncs written|".bright_blue().underline()
 	}
 
 	pub fn innodbstatus() -> ColoredString {
@@ -112,7 +112,7 @@ impl Title {
 	}
 
 	pub fn innodbstatuscolumns() -> ColoredString {
-		" list uflush  uckpt  view inside  que|".bright_blue()
+		" list uflush  uckpt  view inside  que|".bright_blue().underline()
 	}
 
 	pub fn threads() -> ColoredString {
@@ -120,7 +120,7 @@ impl Title {
 	}
 
 	pub fn threadscolumns() -> ColoredString {
-		" run  con  cre  cac   %hit|".bright_blue()
+		" run  con  cre  cac   %hit|".bright_blue().underline()
 	}
 
 	pub fn bytes() -> ColoredString {
@@ -128,7 +128,7 @@ impl Title {
 	}
 
 	pub fn bytescolumns() -> ColoredString {
-		"   recv   send|".bright_blue()
+		"   recv   send|".bright_blue().underline()
 	}
 
 	pub fn semi() -> ColoredString {
@@ -136,7 +136,7 @@ impl Title {
 	}
 
 	pub fn semicolumns() -> ColoredString {
-		"  naw  txaw notx  yes   off|".bright_blue()
+		"  naw  txaw notx  yes   off|".bright_blue().underline()
 	}
 
 	pub fn slave() -> ColoredString {
@@ -144,16 +144,81 @@ impl Title {
 	}
 
 	pub fn slavecolumns() -> ColoredString {
-		"ReadMLP ExecMLP   chkRE   SecBM|".bright_blue()
+		"ReadMLP ExecMLP   chkRE   SecBM|".bright_blue().underline()
 	}
 }
 
-fn gettitle() {
-	let mut title = vec![Title::time()];
-	let mut columns = vec![Title::timecolumns()];
-	unsafe {
-		println!("{}", title.join(""));
+fn get_time() -> String {
+	format!("{}{}",
+		format!("{}", Local::now().format("%H:%M:%S")).bright_yellow().to_string(),
+		"|".green().to_string(),
+	)
+}
+
+fn getdemo(info: &str) -> String {
+	String::from(info)
+}
+
+fn gettitle(args: Vec<&str>) {
+	let mut title = vec![Title::time().to_string()];
+	let mut columns = vec![Title::timecolumns().to_string()];
+	if args.contains(&"--load") {
+		title.push(Title::load().to_string());
+		columns.push(Title::loadcolumns().to_string());
 	}
+
+	if args.contains(&"--cpu") {
+		title.push(Title::cpu().to_string());
+		columns.push(Title::cpucolumns().to_string());
+	}
+
+	if args.contains(&"--swap") {
+		title.push(Title::swap().to_string());
+		columns.push(Title::swapcolumns().to_string());
+	}
+
+	if args.contains(&"--net") {
+		title.push(Title::net(false).to_string());
+		columns.push(Title::netcolumns(false).to_string());
+	} else if args.contains(&"--nets") {
+		title.push(Title::net(true).to_string());
+		columns.push(Title::netcolumns(true).to_string());
+	}
+
+	if args.contains(&"--disk") {
+		title.push(Title::disk().to_string());
+		columns.push(Title::diskcolumns().to_string());
+	}
+
+	println!("{}", title.join(""));
+	println!("{}", columns.join(""));
+}
+
+fn getdata(args: Vec<&str>) {
+	let mut rs = vec![get_time()];
+	if args.contains(&"--load") {
+		rs.push(getdemo("load"));
+	}
+
+	if args.contains(&"--cpu") {
+		rs.push(getdemo("cpu"));
+	}
+
+	if args.contains(&"--swap") {
+		rs.push(getdemo("swap"));
+	}
+
+	if args.contains(&"--net") {
+		rs.push(getdemo("net"));
+	} else if args.contains(&"--nets") {
+		rs.push(getdemo("Net"));
+	}
+
+	if args.contains(&"--disk") {
+		rs.push(getdemo("disk"));
+	}
+
+	println!("{}", rs.join(""));
 }
 
 // // 打印title
@@ -162,15 +227,13 @@ fn gettitle() {
 // 	"ok"
 // }
 
-// 打印开头
-pub fn monitor() {
+// 打印
+pub fn monitor(args: Vec<&str>) {
 	unsafe {
-		if COUNT%10 == 0 {
-			println!("{}",Title::cputitle());
-			println!("{}",Title::cpucolumn());
+		if COUNT%20 == 0 {
+			gettitle(args);
 		} else {
-			let now = Local::now().format("%H:%M:%S");
-			println!("{}", now)
+			getdata(args);	
 		}
 		COUNT += 1;
 	}
