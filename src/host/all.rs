@@ -1,7 +1,9 @@
 use chrono::prelude::*;
 use colored::*;
+use psutil::*;
 
 static mut COUNT: u32 = 0;
+static REPLACE: &str = "oops";
 
 #[derive(Debug)]
 struct Title {}
@@ -63,90 +65,106 @@ impl Title {
 		" readc writec    srkB    swkB queue  await svctm %util|".bright_blue().underline()
 	}
 
-	pub fn com() -> ColoredString {
-		"-------QPS----------TPS------- ".bright_blue()
-	}
+	// pub fn com() -> ColoredString {
+	// 	"-------QPS----------TPS------- ".bright_blue()
+	// }
 
-	pub fn comcolumns() -> ColoredString {
-		"  ins   upd   del    sel   iud|".bright_blue().underline()
-	}
+	// pub fn comcolumns() -> ColoredString {
+	// 	"  ins   upd   del    sel   iud|".bright_blue().underline()
+	// }
 
-	pub fn hit() -> ColoredString {
-		"----KeyBuffer------Index----Qcache---Innodb---(%) ".bright_blue()
-	}
+	// pub fn hit() -> ColoredString {
+	// 	"----KeyBuffer------Index----Qcache---Innodb---(%) ".bright_blue()
+	// }
 
-	pub fn hitcolumns() -> ColoredString {
-		"  read  write    cur  total lorhit readreq  inhit|".bright_blue().underline()
-	}
+	// pub fn hitcolumns() -> ColoredString {
+	// 	"  read  write    cur  total lorhit readreq  inhit|".bright_blue().underline()
+	// }
 
-	pub fn innodbrow() -> ColoredString {
-		"---innodb rows status--- ".bright_blue()
-	}
+	// pub fn innodbrow() -> ColoredString {
+	// 	"---innodb rows status--- ".bright_blue()
+	// }
 
-	pub fn innodbrowcolumns() -> ColoredString {
-		"  ins   upd   del   read|".bright_blue().underline()
-	}
+	// pub fn innodbrowcolumns() -> ColoredString {
+	// 	"  ins   upd   del   read|".bright_blue().underline()
+	// }
 
-	pub fn innodbpages() -> ColoredString {
-		"---innodb bp pages status-- ".bright_blue()
-	}
+	// pub fn innodbpages() -> ColoredString {
+	// 	"---innodb bp pages status-- ".bright_blue()
+	// }
 
-	pub fn innodbpagescolumns() -> ColoredString {
-		"   data   free  dirty flush|".bright_blue().underline()
-	}
+	// pub fn innodbpagescolumns() -> ColoredString {
+	// 	"   data   free  dirty flush|".bright_blue().underline()
+	// }
 
-	pub fn innodbdata() -> ColoredString {
-		"-----innodb data status----- ".bright_blue()
-	}
+	// pub fn innodbdata() -> ColoredString {
+	// 	"-----innodb data status----- ".bright_blue()
+	// }
 
-	pub fn innodblog() -> ColoredString {
-		"--innodb log-- ".bright_blue()
-	}
+	// pub fn innodblog() -> ColoredString {
+	// 	"--innodb log-- ".bright_blue()
+	// }
 
-	pub fn innodblogcolmns() -> ColoredString {
-		"fsyncs written|".bright_blue().underline()
-	}
+	// pub fn innodblogcolmns() -> ColoredString {
+	// 	"fsyncs written|".bright_blue().underline()
+	// }
 
-	pub fn innodbstatus() -> ColoredString {
-		"  his --log(byte)--  read ---query--- ".bright_blue()
-	}
+	// pub fn innodbstatus() -> ColoredString {
+	// 	"  his --log(byte)--  read ---query--- ".bright_blue()
+	// }
 
-	pub fn innodbstatuscolumns() -> ColoredString {
-		" list uflush  uckpt  view inside  que|".bright_blue().underline()
-	}
+	// pub fn innodbstatuscolumns() -> ColoredString {
+	// 	" list uflush  uckpt  view inside  que|".bright_blue().underline()
+	// }
 
-	pub fn threads() -> ColoredString {
-		"----------threads--------- ".bright_blue()
-	}
+	// pub fn threads() -> ColoredString {
+	// 	"----------threads--------- ".bright_blue()
+	// }
 
-	pub fn threadscolumns() -> ColoredString {
-		" run  con  cre  cac   %hit|".bright_blue().underline()
-	}
+	// pub fn threadscolumns() -> ColoredString {
+	// 	" run  con  cre  cac   %hit|".bright_blue().underline()
+	// }
 
-	pub fn bytes() -> ColoredString {
-		"-----bytes---- ".bright_blue()
-	}
+	// pub fn bytes() -> ColoredString {
+	// 	"-----bytes---- ".bright_blue()
+	// }
 
-	pub fn bytescolumns() -> ColoredString {
-		"   recv   send|".bright_blue().underline()
-	}
+	// pub fn bytescolumns() -> ColoredString {
+	// 	"   recv   send|".bright_blue().underline()
+	// }
 
-	pub fn semi() -> ColoredString {
-		"---avg_wait--tx_times--semi ".bright_blue()
-	}
+	// pub fn semi() -> ColoredString {
+	// 	"---avg_wait--tx_times--semi ".bright_blue()
+	// }
 
-	pub fn semicolumns() -> ColoredString {
-		"  naw  txaw notx  yes   off|".bright_blue().underline()
-	}
+	// pub fn semicolumns() -> ColoredString {
+	// 	"  naw  txaw notx  yes   off|".bright_blue().underline()
+	// }
 
-	pub fn slave() -> ColoredString {
-		"---------------SlaveStatus------------- ".bright_blue()
-	}
+	// pub fn slave() -> ColoredString {
+	// 	"---------------SlaveStatus------------- ".bright_blue()
+	// }
 
-	pub fn slavecolumns() -> ColoredString {
-		"ReadMLP ExecMLP   chkRE   SecBM|".bright_blue().underline()
-	}
+	// pub fn slavecolumns() -> ColoredString {
+	// 	"ReadMLP ExecMLP   chkRE   SecBM|".bright_blue().underline()
+	// }
 }
+
+fn parseRepeatSpace(info: String,lens: usize) -> String {
+	let mut buf = info.clone();
+	if info.len() > lens {
+		buf = String::from(REPLACE)
+	}
+	format!("{}{}"," ".repeat(lens-buf.len()), buf)
+}
+
+// pub fn getswapio(beforein: u64,beforeout: u64) -> Result<String> {
+// 	let swap_memory = memory::swap_memory().unwrap();
+// 	let si = swap_memory.swapped_in().parse::<u64>() - beforein;
+// 	let so = swap_memory.swapped_out().parse::<u64>() - beforeout;
+
+// 	Ok(())
+// }
 
 fn get_time() -> String {
 	format!("{}{}",
@@ -157,6 +175,13 @@ fn get_time() -> String {
 
 fn getdemo(info: &str) -> String {
 	String::from(info)
+}
+
+use std::process::Command;
+fn exec(cmd: &str) -> String {
+	let output = Command::new("sh").arg("-c").arg(cmd).output().expect("命令异常");
+	let x = String::from_utf8_lossy(&output.stdout);
+	format!("{}", x)
 }
 
 fn gettitle(args: Vec<&str>) {
@@ -194,10 +219,33 @@ fn gettitle(args: Vec<&str>) {
 	println!("{}", columns.join(""));
 }
 
+fn getload() -> String {
+	let loadavg = host::loadavg().unwrap();
+	let mut one: ColoredString = "".red();
+	let mut two: ColoredString = "".red();
+	let mut three: ColoredString = "".red();
+	match loadavg.one as i32 {
+		0..=10 => one = parseRepeatSpace(format!("{:.2}",loadavg.one), 5).green(),
+		_ => one = parseRepeatSpace(format!("{:.2}",loadavg.one), 5).red()
+	}
+
+	match loadavg.five as i32 {
+		0..=10 => two = parseRepeatSpace(format!("{:.2}",loadavg.five), 6).green(),
+		_ => two = parseRepeatSpace(format!("{:.2}",loadavg.five), 6).red()
+	}
+
+	match loadavg.fifteen as i32 {
+		0..=10 => three = parseRepeatSpace(format!("{:.2}",loadavg.fifteen), 6).green(),
+		_ => three = parseRepeatSpace(format!("{:.2}",loadavg.fifteen), 6).red()
+	}
+
+	format!("{}{}{}{}",one,two,three,"|".green())
+}
+
 fn getdata(args: Vec<&str>) {
 	let mut rs = vec![get_time()];
 	if args.contains(&"--load") {
-		rs.push(getdemo("load"));
+		rs.push(getload());
 	}
 
 	if args.contains(&"--cpu") {
@@ -221,15 +269,49 @@ fn getdata(args: Vec<&str>) {
 	println!("{}", rs.join(""));
 }
 
-// // 打印title
-// fn title() -> String {
+// print basic info 
+fn show_hardware() {
+	let uptime = host::uptime().unwrap().as_secs();
+	println!("{}: {} days", 
+		"     Uptime       ".bright_white().on_red().underline(),
+		format!("{:.2}",uptime/24/60/60).bright_green().bold());
+	let hostname = exec("hostname");
+	println!("{}: {}", 
+		"     Hostname     ".bright_white().on_red().underline(),
+		hostname.trim().bright_green().bold());
+	let loadavg = host::loadavg().unwrap();
+	println!("{}: {}", 
+		"     Load         ".bright_white().on_red().underline(),
+		format!("{:.2} {:.2} {:.2}",loadavg.one,loadavg.five,loadavg.fifteen).bright_green().bold()
+	);
 
-// 	"ok"
-// }
+	let disk_usage = disk::disk_usage("/").unwrap();
+	println!("{}: {}", 
+		"     DISK         ".bright_white().on_red().underline(),
+		format!("Total {:.2} Used {:.2} Free {:.2} Percent {:.2}",disk_usage.total()/1024/1024/1024,disk_usage.used()/1024/1024/1024,disk_usage.free()/1024/1024/1024,disk_usage.percent()).bright_green().bold()
+	);
+
+	let virtual_memory = memory::virtual_memory().unwrap();
+	println!("{}: {}", 
+		"     MEM          ".bright_white().on_red().underline(),
+		format!("Total {:.2} Available {:.2} Used {:.2} Free {:.2} Percent {:.2}",virtual_memory.total()/1024/1024/1024,virtual_memory.available()/1024/1024/1024,virtual_memory.used()/1024/1024/1024,virtual_memory.free()/1024/1024/1024,disk_usage.percent()).bright_green().bold()
+	);
+	let swap_memory = memory::swap_memory().unwrap();
+	println!("{}: {}", 
+		"     SWAP         ".bright_white().on_red().underline(),
+		format!("Total {:.2} Used {:.2} Free {:.2} Percent {:.2}",swap_memory.total()/1024/1024/1024,swap_memory.used()/1024/1024/1024,swap_memory.free()/1024/1024/1024,swap_memory.percent()).bright_green().bold()
+	);
+
+	println!("{}",parseRepeatSpace(String::from("991asdaz"), 6))
+}
 
 // 打印
 pub fn monitor(args: Vec<&str>) {
 	unsafe {
+		if COUNT == 0 {
+			show_hardware();
+		}
+
 		if COUNT%20 == 0 {
 			gettitle(args);
 		} else {
