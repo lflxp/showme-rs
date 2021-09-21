@@ -242,6 +242,79 @@ fn getload() -> String {
 	format!("{}{}{}{}",one,two,three,"|".green())
 }
 
+static mut SWAPIN: Bytes = 0;
+static mut SWAPOUT: Bytes = 0;
+fn getswap() -> String {
+	let swap_memory = memory::swap_memory().unwrap();
+	let mut sin = "".red();
+	let mut sout = "".red();
+	unsafe {
+		let si: u64 = swap_memory.swapped_in() - SWAPIN;
+		let so: u64 = swap_memory.swapped_out() - SWAPOUT;
+
+		match si {
+			0 => sin = parseRepeatSpace(si.to_string(),5).green(),
+			_ => sin = parseRepeatSpace(si.to_string(),5).red()
+		}
+
+		match so {
+			0 => sout = parseRepeatSpace(so.to_string(),5).green(),
+			_ => sout = parseRepeatSpace(so.to_string(),5).red()
+		}
+
+		SWAPIN = swap_memory.swapped_in();
+		SWAPOUT = swap_memory.swapped_out();
+	}
+
+	format!("{}{}{}",sin,sout,"|".green())
+}
+
+fn getcpu() -> String {
+	let mut cpu_times_percent_collector = cpu::CpuTimesPercentCollector::new().unwrap();
+	let cpu_times_percent_percpu = cpu_times_percent_collector
+		.cpu_times_percent_percpu()
+		.unwrap();
+	let mut user:f32 = 0.0;
+	let mut system:f32 = 0.0;
+	let mut idle:f32 = 0.0;
+	let mut busy:f32 = 0.0;
+	for x in cpu_times_percent_percpu {
+		user += x.user();
+		system += x.system();
+		idle += x.idle();
+		busy += x.busy();
+		// println!("user {} system {} idle {} busy {}",x.user(),x.system(),x.idle(),x.busy());
+	}
+
+	let mut user_str = "".red();
+	let mut system_str = "".red();
+	let mut idle_str = "".red();
+	let mut busy_str = "".red();
+	
+	match user as u64 {
+		0..=100 => user_str = parseRepeatSpace((user as u64/10 as u64).to_string(), 4).green(),
+		_ => user_str = parseRepeatSpace((user as u64/10 as u64).to_string(), 4).red(), 
+	}
+
+	match system as u64 {
+		0..=100 => system_str = parseRepeatSpace((system as u64/10 as u64).to_string(), 4).green(),
+		_ => system_str = parseRepeatSpace((system as u64/10 as u64).to_string(), 4).red(), 
+	}
+
+	match idle as u64 {
+		0..=300 => idle_str = parseRepeatSpace((system as u64/10 as u64).to_string(), 4).red(),
+		_ => idle_str = parseRepeatSpace((system as u64/10 as u64).to_string(), 4).green(), 
+	}
+
+	match busy as u64 {
+		0..=100 => busy_str = parseRepeatSpace((busy as u64/10 as u64).to_string(), 4).green(),
+		_ => busy_str = parseRepeatSpace((busy as u64/10 as u64).to_string(), 4).red(), 
+	}
+
+	format!("{}{}{}{}{}",user_str,system_str,idle_str,busy_str,"|".green())
+	// format!("{} {} {} {}",user,system,idle,busy)
+}
+
 fn getdata(args: Vec<&str>) {
 	let mut rs = vec![get_time()];
 	if args.contains(&"--load") {
@@ -249,11 +322,11 @@ fn getdata(args: Vec<&str>) {
 	}
 
 	if args.contains(&"--cpu") {
-		rs.push(getdemo("cpu"));
+		rs.push(getcpu());
 	}
 
 	if args.contains(&"--swap") {
-		rs.push(getdemo("swap"));
+		rs.push(getswap());
 	}
 
 	if args.contains(&"--net") {
