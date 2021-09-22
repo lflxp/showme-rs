@@ -1,3 +1,3 @@
-pub fn gethostname() -> String {
-	String::from("macos")
-}
+// pub fn gethostname() -> String {
+// 	String::from("macos")
+// }

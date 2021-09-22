@@ -82,7 +82,7 @@ fn main() {
                 .arg(
                     Arg::with_name("net")
                         .short("n")
-                        .long("net")
+                        .long("snet")
                         .help("网络负载")
                 )
                 .arg(
@@ -155,6 +155,7 @@ fn main() {
             args.push("--cpu");
             args.push("--load");
             args.push("--swap");
+            args.push("--snet");
         }
         if matches.is_present("cpu") {
             args.push("--cpu")
@@ -166,7 +167,7 @@ fn main() {
             args.push("--swap")
         }
         if matches.is_present("net") {
-            args.push("--net")
+            args.push("--snet")
         }
         if matches.is_present("Net") {
             args.push("--nets")

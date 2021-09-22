@@ -1,17 +1,60 @@
 # RUN
 
-> cargo run -- monitor -l -c -N -d -s -i 1
+> cargo run -- monitor --lazy
 
 ```
-warning: `clapdemo` (bin "clapdemo") generated 22 warnings
-    Finished dev [unoptimized + debuginfo] target(s) in 0.05s
-     Running `target/debug/clapdemo monitor -l -c -n -d -s -i 1`
+➜  clapdemo git:(master) ✗ cargo run -- monitor --lazy
+   Compiling clapdemo v0.1.0 (/root/code/clapdemo)
+    Finished dev [unoptimized + debuginfo] target(s) in 1.79s
+     Running `target/debug/clapdemo monitor --lazy`
 Value for config: default.conf
 No verbose info
--------- -----load-avg---- ----cpu-usage--- ---swap--- ----net(A)---- ------------------------io-usage---------------------- 
-  time  |  1m    5m   15m | usr sys idl iow|   si   so|   recv   send| readc writec    srkB    swkB queue  await svctm %util|
-18:07:10|loadcpuswapnetdisk
-18:07:11|loadcpuswapnetdisk
-18:07:12|loadcpuswapnetdisk
-18:07:13|loadcpuswapnetdisk
+     Uptime       : 0 days
+     Hostname     : DESKTOP-DVBN0M3
+     Load         : 0.43 0.59 0.80
+     DISK         : Total 250 Used 65 Free 172 Percent 27.60
+     MEM          : Total 25 Available 16 Used 7 Free 10 Percent 27.60
+     SWAP         : Total 7 Used 0 Free 6 Percent 0.00
+  oops
+-------- -----load-avg---- ----cpu-usage--- ---swap--- ----net(A)---- 
+  time  |  1m    5m   15m | usr sys idl iow|   si   so|   recv   send|
+02:19:17| 0.43  0.59  0.80|   1   1  95   0|    0    1|      0      0|
+02:19:18| 0.43  0.59  0.80|   0   0  98   0|    0    0|     1k     3k|
+02:19:19| 0.47  0.60  0.80|   0   0  99   0|    0    0|    216     1k|
+02:19:20| 0.47  0.60  0.80|   0   0  99   0|    0    0|     1k     2k|
+02:19:21| 0.47  0.60  0.80|   0   0  99   0|    0    0|    454     2k|
+02:19:22| 0.47  0.60  0.80|   0   0  98   0|    0    0|     4k    63k|
+02:19:23| 0.47  0.60  0.80|   1   1  96   0|    0    0|    908     3k|
+02:19:24| 0.84  0.67  0.83|   0   0  99   0|    0    0|     7k     5k|
+02:19:25| 0.84  0.67  0.83|   0   0  98   0|    0    0|     3k     7k|
+02:19:26| 0.84  0.67  0.83|   0   0  98   0|    0    0|    508     2k|
+02:19:27| 0.84  0.67  0.83|   0   0  99   0|    0    0|    289     1k|
+02:19:28| 0.84  0.67  0.83|   0   0  99   0|    0    0|     2k     4k|
+02:19:29| 0.77  0.66  0.82|   0   0  98   0|    0    0|     6k     6k|
+02:19:30| 0.77  0.66  0.82|   0   0  99   0|    0    0|     1k     4k|
+02:19:31| 0.77  0.66  0.82|   2   5  91   0|    0    0|     2k    14k|
+02:19:32| 0.77  0.66  0.82|   2  74   0   0|    0    0|     2k     5k|
+02:19:33| 0.77  0.66  0.82|   2  74   0   0|    0    0|     1k     3k|
+02:19:34| 3.03  1.13  0.97|   2  73   0   0|    0    0|     2k     4k|
+02:19:35| 3.03  1.13  0.97|   1  74   0   0|    0    0|     4k     7k|
+-------- -----load-avg---- ----cpu-usage--- ---swap--- ----net(A)---- 
+  time  |  1m    5m   15m | usr sys idl iow|   si   so|   recv   send|
+02:19:37| 3.03  1.13  0.97|   2  73   0   0|    0    0|     2k     4k|
+02:19:38| 3.03  1.13  0.97|   2  75   0   0|    0    0|    981     3k|
+02:19:39| 5.03  1.58  1.12|   2  74   0   0|    0    0|    11k     5m|
+02:19:40| 5.03  1.58  1.12|   1  74   0   0|    0    0|    26k    15m|
+02:19:41| 5.03  1.58  1.12|   1  76   0   0|    0    0|     6k     2m|
+02:19:42| 5.03  1.58  1.12|   1  73   0   0|    0    0|    48k    23m|
+02:19:43| 5.03  1.58  1.12|   2  74   0   0|    0    0|    20k    11m|
+02:19:44| 5.99  1.83  1.20|   1  71   0   0|    0    0|    47k    18m|
+02:19:45| 5.99  1.83  1.20|   2  73   0   0|    0    0|    55k    17m|
+02:19:46| 5.99  1.83  1.20|   1  72   0   0|    0    0|    49k    12m|
+02:19:47| 5.99  1.83  1.20|   2  73   0   0|    0    0|    55k    20m|
+02:19:48| 5.99  1.83  1.20|   2  73   0   0|    0    0|    51k    20m|
+02:19:49| 7.75  2.27  1.35|   1  72   0   0|    0    0|    52k    17m|
+02:19:50| 7.75  2.27  1.35|   1  73   0   0|    0    0|    42k    18m|
+02:19:51| 7.75  2.27  1.35|   1  72   0   0|    0    0|    30k    14m|
+02:19:52| 7.75  2.27  1.35|   1  73   0   0|    0    0|     2k     4k|
+02:19:53| 7.75  2.27  1.35|   2  76   0   0|    0    0|     2k     4k|
+^CSay Good Bye!
 ```
