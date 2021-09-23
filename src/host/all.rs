@@ -177,9 +177,9 @@ fn get_time() -> String {
 	)
 }
 
-fn getdemo(info: &str) -> String {
-	String::from(info)
-}
+// fn getdemo(info: &str) -> String {
+// 	String::from(info)
+// }
 
 use std::process::Command;
 fn exec(cmd: &str) -> String {
@@ -508,30 +508,67 @@ fn getnetio(detail: bool) -> String {
 	}
 }
 
-// static mut READCOUNT: u64 = 0;
-// static mut WRITECOUNT: u64 = 0;
-// static mut READBYTES: u64 = 0;
-// static mut WRITEBYTES: u64 = 0;
+static mut READCOUNT: u64 = 0;
+static mut WRITECOUNT: u64 = 0;
+static mut READBYTES: u64 = 0;
+static mut WRITEBYTES: u64 = 0;
 
-// fn getdisk() -> String {
-// 	let mut disk_io_counters_collector = disk::DiskIoCountersCollector::default();
-// 	let disk_io_counters_per_partition = disk_io_counters_collector
-// 		.disk_io_counters_per_partition()
-// 		.unwrap();
+fn getdisk() -> String {
+	let mut disk_io_counters_collector = disk::DiskIoCountersCollector::default();
+	let disk_io_counters_per_partition = disk_io_counters_collector
+		.disk_io_counters_per_partition()
+		.unwrap();
 
-// 	let mut read_count: u64 = 0;
-// 	let mut write_count: u64;
-// 	let mut read_bytes: u64;
-// 	let mut write_bytes: u64;
-// 	for x in disk_io_counters_per_partition {
-// 		let x1 = match x.read_count() {
-// 			Ok(tmp) => tmp,
-// 			Err(_) => {}
-// 		}
-// 		read_count += x.read_count();
-// 	}
-// 	String::from("")
-// }
+	let mut read_count: u64 = 0;
+	let mut write_count: u64 = 0;
+	let mut read_bytes: u64 = 0;
+	let mut write_bytes: u64 = 0;
+	for (_,value) in disk_io_counters_per_partition.iter() {
+		// println!("{}: {} {} {} {}",key,value.read_count(),value.write_count(),value.read_bytes(),value.write_bytes());
+
+		read_count += value.read_count();
+		write_count += value.write_count();
+		read_bytes += value.read_bytes();
+		write_bytes += value.write_bytes();
+	}
+
+	let result: String;
+	unsafe {
+		let rc = read_count - READCOUNT;
+		let wc = write_count - WRITECOUNT;
+		let rb = (read_bytes - READBYTES) /2;
+		let wb = (write_bytes - WRITEBYTES) /2;
+
+		let rc_str = parse_repeat_space(rc.to_string(), 6).white();
+		let wc_str = parse_repeat_space(wc.to_string(), 7).white(); 
+		let rb_str: ColoredString;
+		let wb_str: ColoredString;
+
+		match rb/1024 {
+			0 => rb_str = parse_repeat_space(format!("{:.0}",rb), 8).white(),
+			1..=1000 => rb_str = parse_repeat_space(format!("{:.1}k",rb/1024), 8).yellow(),
+			_ => rb_str = parse_repeat_space(format!("{:.1}m",rb/1024/1024), 8).red(),
+		}
+
+		match wb/1024 {
+			0 => wb_str = parse_repeat_space(format!("{:.0}",wb), 8).white(),
+			1..=1000 => wb_str = parse_repeat_space(format!("{:.1}k",wb/1024), 8).yellow(),
+			_ => wb_str = parse_repeat_space(format!("{:.1}m",wb/1024/1024), 8).red(),
+		}
+
+		if READCOUNT == 0 && WRITECOUNT == 0 && READBYTES == 0 && WRITEBYTES == 0 {
+			result = format!("     0     0        0       0{}","|".green())
+		} else {
+			result = format!("{}{}{}{}{}",rc_str,wc_str,rb_str,wb_str,"|".green());
+		}
+
+		READCOUNT = read_count;
+		WRITECOUNT = write_count;
+		READBYTES = read_bytes;
+		WRITEBYTES = write_bytes;
+	}
+	result
+}
 
 fn getdata(args: Vec<&str>) {
 	let mut rs = vec![get_time()];
@@ -560,7 +597,7 @@ fn getdata(args: Vec<&str>) {
 	}
 
 	if args.contains(&"--disk") {
-		rs.push(getdemo("disk"));
+		rs.push(getdisk());
 	}
 
 	println!("{}", rs.join(""));
