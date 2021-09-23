@@ -58,3 +58,10 @@ No verbose info
 02:19:53| 7.75  2.27  1.35|   2  76   0   0|    0    0|     2k     4k|
 ^CSay Good Bye!
 ```
+
+# TODO
+
+1. [x] blackwater ip scan
+2. gui
+3. static http server
+4. gotty

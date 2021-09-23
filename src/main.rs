@@ -7,7 +7,19 @@ use std::thread;
 use std::time::Duration;
 use std::process;
 
-fn main() {
+mod scan;
+use scan::{Parseip, pingmethod,print_result, Core, LOGO};
+use core::fmt::Error;
+use stopwatch::{Stopwatch};
+
+use std::path::PathBuf;
+use log::{error, warn, debug};
+use log4rs;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+
     ctrlc::set_handler(move || {
         println!("Say Good Bye!");
         process::exit(0);
@@ -42,6 +54,54 @@ fn main() {
                         .short("d")
                         .help("print debug information verbosely"),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("scan")
+                .about("扫描IP和端口")
+                .version("0.1")
+                .author("lflxp <382023823@qq.com>")
+                .arg(
+                    Arg::with_name("ip")
+                        .short("i")
+                        .long("ip")
+                        .value_name("IP")
+                        .takes_value(true)
+                        .help("10.1-100.2.1-255"),
+                )
+                .arg(
+                    Arg::with_name("port")
+                        .short("p")
+                        .long("port")
+                        .value_name("PORT")
+                        .takes_value(true)
+                        .help("21,22,23,25,69,79,80-89,110,111,113,115,119,135,137,138,139,143,152,153,158,161,162,179,194,201,209,213,218,220,259,264,308,389,443,445,512,513,514,524,530,531,532,540,542,544,546,547,548,554,556,563,591,593,604,631,636,647,648,652,665,666,674,691,692,695,699,700,701,702,706,771,720,749,782,829,860,873,901,902,904,981,989,990,991,992,993,995,1025,1433,1521,2082,2083,2086,2087,2095,2096,2077,2078,2222,2601,2604,3128,3306,3311,3312,3389,5432,5560,5900,5984,6379,7001,7002,7778,8080-9090,9200,9300,9418,10000,11211,27017,27018,50000,50030,50070"),
+                )
+                .arg(
+                    Arg::with_name("concurrency")
+                        .short("c")
+                        .long("concurrency")
+                        .value_name("Concurrency")
+                        .takes_value(true)
+                        .default_value("65535")
+                        .help("超时时间"),
+                )
+                .arg(
+                    Arg::with_name("file")
+                        .short("f")
+                        .long("file")
+                        .value_name("FILE")
+                        .takes_value(true)
+                        .default_value("./demo")
+                        .help("file"),
+                )
+                .arg(
+                    Arg::with_name("timeout")
+                        .short("t")
+                        .long("timeout")
+                        .value_name("TIMEOUT")
+                        .takes_value(true)
+                        .help("超时时间"),
+                )
         )
         .subcommand(
             SubCommand::with_name("monitor")
@@ -149,6 +209,68 @@ fn main() {
         }
     }
 
+    if let Some(matches) = matches.subcommand_matches("scan") {
+        println!("{}",LOGO);
+        let mut ip: &str ="127.0.0.1";
+        let mut port: &str = "22,3306";
+        let mut timeout: u64 = 1;
+        let mut concurrency: u32 = 65535; 
+        let mut file: &str = ""; 
+        if matches.is_present("ip") {
+            ip = matches.value_of("ip").unwrap();
+        }
+        if matches.is_present("port") {
+            port = matches.value_of("port").unwrap();
+        }
+        if matches.is_present("timeout") {
+            timeout = matches.value_of("timeout").unwrap().parse::<u64>().unwrap();
+        }
+        if matches.is_present("concurrency") {
+            concurrency = matches.value_of("concurrency").unwrap().parse::<u32>().unwrap();
+        }
+        if matches.is_present("file") {
+            file = matches.value_of("file").unwrap();
+        }
+
+        let instance = Parseip{
+            ip: String::from(ip),
+            port: String::from(port),
+            timeout: timeout,
+            udp: false,
+            concurrency: concurrency,
+            outfile: Some(PathBuf::from(file)),
+        };
+
+        let ips = instance.get_ips().await.unwrap();
+        if ips.len() == 0 {
+            panic!("Parameter Error");
+        }
+
+        let ports = instance.get_ports().await.unwrap();
+        if ports.len() == 0 {
+            panic!("Parameter Error");
+        }
+
+        let start = Stopwatch::start_new();
+
+        // ping ip 获取有效ip
+        match pingmethod(ips).await {
+            Ok(data) => {
+                let mut core = Core::new(&instance).await;
+                for (index,ip) in data.iter().enumerate() {
+                    warn!("Index {} IP {} scanning", index, ip);
+                    match core.runasip(ports.clone(), ip.to_string()).await {
+                        Ok(_) => debug!("{} ip success",ip),
+                        _ => {}
+                    }
+                }
+            }
+            Err(e) => error!("{}", e),
+        }
+        
+        print_result(start).await;
+    }
+
     if let Some(matches) = matches.subcommand_matches("monitor") {
         let mut args = Vec::new();
         if matches.is_present("lazy") {
@@ -185,4 +307,6 @@ fn main() {
             monitor(args.clone());
         }
     }
+
+    Ok(())
 }
