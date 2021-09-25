@@ -9,12 +9,15 @@ use std::process;
 
 mod scan;
 use scan::{Parseip, pingmethod,print_result, Core, LOGO};
-use core::fmt::Error;
+use std::io::Error;
 use stopwatch::{Stopwatch};
 
 use std::path::PathBuf;
-use log::{error, warn, debug};
+use log::{debug, error, info, warn};
 use log4rs;
+
+mod server;
+use server::{server1,server_tokio,server_async};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -158,6 +161,36 @@ async fn main() -> Result<(), Error> {
                         .help("磁盘负载")
                 )
         )
+        .subcommand(
+            SubCommand::with_name("server")
+                .about("http server")
+                .version("1.3")
+                .author("Someone E. <someone_else@other.com>")
+                .arg(
+                    Arg::with_name("port")
+                        .short("p")
+                        .long("port")
+                        .default_value("9999")
+                        .takes_value(true)
+                        .help("http server on listen port"),
+                )
+                .arg(
+                    Arg::with_name("host")
+                        .short("h")
+                        .long("host")
+                        .default_value("127.0.0.1")
+                        .takes_value(true)
+                        .help("http server on listen host"),
+                )
+                .arg(
+                    Arg::with_name("type")
+                        .short("t")
+                        .long("type")
+                        .default_value("spawn")
+                        .takes_value(true)
+                        .help("http server类型：1.spawn 2.tokio 3.async-std"),
+                ),
+        )
         .get_matches();
 
     // let matches = clap_app!(myapp =>
@@ -207,6 +240,35 @@ async fn main() -> Result<(), Error> {
         } else {
             println!("Printing normally...");
         }
+    }
+
+    if let Some(matches) = matches.subcommand_matches("server") {
+        let mut port: u16 = 0;
+        let mut host: &str = "";
+        if matches.is_present("port") {
+            port = matches.value_of("port").unwrap().parse::<u16>().unwrap();
+        }
+        if matches.is_present("host") {
+            host = matches.value_of("host").unwrap();
+        }
+
+        match matches.value_of("type").unwrap() {
+            "spawn" => {
+                debug!("spawn");
+                server1(host,port)
+            },
+            "tokio" => {
+                debug!("tokio");
+                server_tokio(host,port).await
+            },
+            "async-std" => {
+                debug!("async-std");
+                server_async(host,port).await
+            },
+            _ => warn!("unknown type {}", matches.value_of("type").unwrap())
+        };
+
+        info!("wahaha")
     }
 
     if let Some(matches) = matches.subcommand_matches("scan") {
@@ -310,3 +372,4 @@ async fn main() -> Result<(), Error> {
 
     Ok(())
 }
+
