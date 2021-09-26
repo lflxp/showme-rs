@@ -105,6 +105,12 @@ async fn main() -> Result<(), Error> {
                         .takes_value(true)
                         .help("超时时间"),
                 )
+                .arg(
+                    Arg::with_name("both")
+                        .short("b")
+                        .long("both")
+                        .help("是否同时进行ip扫描和端口扫描"),
+                )
         )
         .subcommand(
             SubCommand::with_name("monitor")
@@ -277,7 +283,8 @@ async fn main() -> Result<(), Error> {
         let mut port: &str = "22,3306";
         let mut timeout: u64 = 1;
         let mut concurrency: u32 = 65535; 
-        let mut file: &str = ""; 
+        let mut file: &str = "";
+        let mut both: bool = false;
         if matches.is_present("ip") {
             ip = matches.value_of("ip").unwrap();
         }
@@ -292,6 +299,9 @@ async fn main() -> Result<(), Error> {
         }
         if matches.is_present("file") {
             file = matches.value_of("file").unwrap();
+        }
+        if matches.is_present("both") {
+            both = true;
         }
 
         let instance = Parseip{
@@ -318,12 +328,14 @@ async fn main() -> Result<(), Error> {
         // ping ip 获取有效ip
         match pingmethod(ips).await {
             Ok(data) => {
-                let mut core = Core::new(&instance).await;
-                for (index,ip) in data.iter().enumerate() {
-                    warn!("Index {} IP {} scanning", index, ip);
-                    match core.runasip(ports.clone(), ip.to_string()).await {
-                        Ok(_) => debug!("{} ip success",ip),
-                        _ => {}
+                if both {
+                    let mut core = Core::new(&instance).await;
+                    for (index,ip) in data.iter().enumerate() {
+                        warn!("Index {} IP {} scanning", index, ip);
+                        match core.runasip(ports.clone(), ip.to_string()).await {
+                            Ok(_) => debug!("{} ip success",ip),
+                            _ => {}
+                        }
                     }
                 }
             }
