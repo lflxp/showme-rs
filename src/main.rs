@@ -19,6 +19,9 @@ use log4rs;
 mod server;
 use server::{server1,server_tokio,server_async};
 
+mod fzf;
+use fzf::run_input;
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
@@ -196,6 +199,11 @@ async fn main() -> Result<(), Error> {
                         .takes_value(true)
                         .help("http server类型：1.spawn 2.tokio 3.async-std"),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("fzf")
+                .about("fzf search")
+                .version("0.1")
         )
         .get_matches();
 
@@ -380,6 +388,13 @@ async fn main() -> Result<(), Error> {
             // println!("{}",Local::now())
             monitor(args.clone());
         }
+    }
+
+    if let Some(matches) = matches.subcommand_matches("fzf") {
+        match run_input() {
+            Ok(_) => {},
+            Err(e) => println!("{:?}", e)
+        };
     }
 
     Ok(())
