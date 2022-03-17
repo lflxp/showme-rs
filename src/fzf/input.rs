@@ -84,6 +84,7 @@ struct App<'a> {
     input_mode: InputMode,
     /// History of recorded messages
     messages: Vec<String>,
+    search: Vec<String>,
     current: usize,
     items: StatefulList<&'a str>,
     // events: Vec<(&'a str, &'a str)>,
@@ -103,6 +104,7 @@ impl<'a> Default for App<'a> {
             messages: Vec::new(),
             items: StatefulList::with_items(TASKS.to_vec()),
             current: 0,
+            search: Vec::new(),
             // events: vec![
             //     ("Event1", "INFO"),
             //     ("Event2", "INFO"),
@@ -212,6 +214,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                     }
                     KeyCode::Char(c) => {
                         app.input.push(c);
+                        app.search.clear();
+                        app.current = 0;
+                        app.items.unselect();
+                        for x in &app.items.items {
+                            if x.contains(&app.input) {
+                                app.search.push(x.to_string());
+                            }
+                        }
                     }
                     KeyCode::Backspace => {
                         app.input.pop();
@@ -369,29 +379,43 @@ where
     // let messages =
     //     List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     // f.render_widget(messages, area);
+    app.search.clear();
+    app.current = 0;
+    for x in &app.items.items {
+        if x.contains(&app.input) {
+            app.search.push(x.to_string());
+        }
+    }
     let items: Vec<ListItem> = app
-        .items
-        .items
+        .search
         .iter()
         .map(|i| {
-            // let mut lines = vec![Spans::from(i.0)];
-            // for _ in 0..i.1 {
-            //     lines.push(Spans::from(Span::styled(
-            //         "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-            //         Style::default().add_modifier(Modifier::ITALIC),
-            //     )));
-            // }
-            // ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
-            ListItem::new(vec![Spans::from(Span::raw(*i))])
+            ListItem::new(vec![Spans::from(Span::raw(i))])
         })
         .collect();
+    // let items: Vec<ListItem> = app
+    //     .items
+    //     .items
+    //     .iter()
+    //     .map(|i| {
+    //         // let mut lines = vec![Spans::from(i.0)];
+    //         // for _ in 0..i.1 {
+    //         //     lines.push(Spans::from(Span::styled(
+    //         //         "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    //         //         Style::default().add_modifier(Modifier::ITALIC),
+    //         //     )));
+    //         // }
+    //         // ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
+    //         ListItem::new(vec![Spans::from(Span::raw(*i))])
+    //     })
+    //     .collect();
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("List"))
+        .block(Block::default().borders(Borders::NONE))
         .highlight_style(
             Style::default()
-                .bg(Color::LightGreen)
+                .fg(Color::Red)
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("> ");

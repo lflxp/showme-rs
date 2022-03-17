@@ -6,3 +6,6 @@ scan:
 
 server:
 	cargo run -- server -h 0.0.0.0 -t tokio -p 9999
+
+fzf:
+	cargo run -- fzf
