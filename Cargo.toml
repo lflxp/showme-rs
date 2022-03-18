@@ -23,6 +23,7 @@ tui = { version = "0.17.0", default-features = false, features = ['crossterm'] }
 crossterm = "0.21.0"
 unicode-width = "0.1"
 serde = { version = "1", optional = true, features = ["derive"]}
+walkdir = "2.3.2"
 
 [dependencies.async-std]
 version = "1.9.0"

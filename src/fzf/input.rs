@@ -24,6 +24,41 @@ use tui::{
     Frame, Terminal,
 };
 use unicode_width::UnicodeWidthStr;
+use walkdir::{WalkDir,DirEntry};
+// https://blog.csdn.net/wsp_1138886114/article/details/116454414?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_baidulandingword~default-0.pc_relevant_default&spm=1001.2101.3001.4242.1&utm_relevant_index=3
+
+pub fn testfile() -> Vec<&'static str> {
+    let mut results = Vec::new();
+	// for entry in WalkDir::new("./").into_iter().filter_map(|e| e.ok()) {
+    //     // println!("{}", entry.path().display());
+    //     results.push(entry.path().display().to_string().as_str());
+    // }
+
+    // let mut results = WalkDir::new("./")
+    //     .into_iter()
+    //     .filter_map(|e| {
+    //         if e.ok() {
+    //             results.push(e.path().display().to_string().as_str());
+    //         }
+    //     });
+
+    WalkDir::new("./")
+        .into_iter()
+        .filter_entry(|e|is_not_hidden(e))
+        .filter_map(|v|v.ok())
+        .for_each(|x|{
+            results.push(x.path().display().to_string().as_str())
+        });
+    return results;
+}
+
+fn is_not_hidden(entry:&DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| !s.ends_with(".jpg"))
+        .unwrap_or(false)
+}
 
 enum InputMode {
     Normal,
@@ -102,7 +137,8 @@ impl<'a> Default for App<'a> {
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
-            items: StatefulList::with_items(TASKS.to_vec()),
+            // items: StatefulList::with_items(TASKS.to_vec()),
+            items: StatefulList::with_items(testfile()),
             current: 0,
             search: Vec::new(),
             // events: vec![
