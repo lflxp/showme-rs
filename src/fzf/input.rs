@@ -14,8 +14,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use futures::TryFutureExt;
-use std::{error::Error, io};
+use std::{error::Error, io::{self, Write}};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
@@ -128,22 +127,22 @@ struct App<'a> {
     // events: Vec<(&'a str, &'a str)>,
 }
 
-const TASKS: [&str; 24] = [
-    "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Item7", "Item8", "Item9", "Item10",
-    "Item11", "Item12", "Item13", "Item14", "Item15", "Item16", "Item17", "Item18", "Item19",
-    "Item20", "Item21", "Item22", "Item23", "Item24",
-];
+// const TASKS: [&str; 24] = [
+//     "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Item7", "Item8", "Item9", "Item10",
+//     "Item11", "Item12", "Item13", "Item14", "Item15", "Item16", "Item17", "Item18", "Item19",
+//     "Item20", "Item21", "Item22", "Item23", "Item24",
+// ];
 
 impl<'a> App<'a> {
-    pub fn getfiles(&self) -> Result<Vec<String>,()> {
-        let data: Vec<DirEntry> = WalkDir::new("./").into_iter().filter_map(|e| e.ok()).map(|x|x).collect();
+    // pub fn getfiles(&self) -> Result<Vec<String>,()> {
+    //     let data: Vec<DirEntry> = WalkDir::new("./").into_iter().filter_map(|e| e.ok()).map(|x|x).collect();
 
-        let mut result = Vec::new();
-        for entry in data.clone() {
-            result.push(entry.path().display().to_string())
-        }
-        Ok(result)
-    }
+    //     let mut result = Vec::new();
+    //     for entry in data.clone() {
+    //         result.push(entry.path().display().to_string())
+    //     }
+    //     Ok(result)
+    // }
 
     pub fn getfiles2(&mut self) {
         // let info = self.getfiles().unwrap();
@@ -157,7 +156,8 @@ impl<'a> App<'a> {
             .filter_entry(|e|is_not_hidden(e)) // 排除
             .filter_map(|e| e.ok())
             .for_each(|x| {
-                self.files.items.insert(0, x.path().display().to_string())
+                // self.files.items.insert(x.0, x.1.path().display().to_string())
+                self.files.items.push(x.path().display().to_string())
             })
     }
 
@@ -229,6 +229,10 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
+    // 显示输出
+    let info = app.search.items.get(app.current).unwrap();
+    io::stdout().write_all(info.as_bytes())?;
+    
     if let Err(err) = res {
         println!("{:?}", err)
     }
@@ -282,6 +286,18 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
                         app.messages.push(app.input.drain(..).collect());
+
+                        // let info = app.search.items.get(app.current).unwrap();
+                        // app.messages.push(info.to_string());
+
+                        // https://www.twle.cn/c/yufei/rust/rust-basic-input-output.html
+                        // io::stdout().write_all(info.as_bytes())?;
+
+                        // std::io::stdout().write(format!("\n写入的字节数为：{}",100).as_bytes()).unwrap();
+                        // println!("1111111111111111 {}",info);
+
+                        // process::exit(0);
+                        return Ok(());
                     }
                     KeyCode::Char(c) => {
                         app.input.push(c);
@@ -291,7 +307,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         // app.files.unselect();
                         for x in &app.files.items {
                             if x.contains(&app.input) {
-                                app.search.items.insert(0,x.to_string());
+                                // app.search.items.insert(x.0,x.1.to_string());
+                                app.search.items.push(x.to_string());
                             }
                         }
                     }
@@ -384,7 +401,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             InputMode::Normal => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
-        .block(Block::default().borders(Borders::ALL).title("Input"));
+        .block(Block::default().borders(Borders::ALL).title("搜索框"));
     f.render_widget(input, chunks[1]);
     match app.input_mode {
         InputMode::Normal =>
@@ -410,8 +427,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 fn draw_message<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .constraints([
-            Constraint::Percentage(80),
-            Constraint::Percentage(20)
+            Constraint::Percentage(50),
+            Constraint::Percentage(50)
         ])
         .direction(Direction::Horizontal)
         .split(area);
@@ -454,7 +471,7 @@ where
     //     List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     // f.render_widget(messages, area);
     app.search.items.clear();
-    app.current = 0;
+    // app.current = 0;
     // for x in &app.items.items {
     //     if x.contains(&app.input) {
     //         app.search.push(x.to_string());
@@ -492,7 +509,7 @@ where
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
-        .block(Block::default().borders(Borders::NONE))
+        .block(Block::default().borders(Borders::ALL).title("结果"))
         .highlight_style(
             Style::default()
                 .fg(Color::Red)
