@@ -14,6 +14,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use futures::TryFutureExt;
 use std::{error::Error, io};
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -27,11 +28,11 @@ use unicode_width::UnicodeWidthStr;
 use walkdir::{WalkDir,DirEntry};
 // https://blog.csdn.net/wsp_1138886114/article/details/116454414?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_baidulandingword~default-0.pc_relevant_default&spm=1001.2101.3001.4242.1&utm_relevant_index=3
 
-pub fn testfile() -> Vec<&'static str> {
-    let mut results = Vec::new();
+// pub async fn testfile() -> Result<Vec<String>,()> {
+    // let mut results = Vec::new();
 	// for entry in WalkDir::new("./").into_iter().filter_map(|e| e.ok()) {
     //     // println!("{}", entry.path().display());
-    //     results.push(entry.path().display().to_string().as_str());
+    //     results.push(entry.path().display().to_string());
     // }
 
     // let mut results = WalkDir::new("./")
@@ -42,21 +43,22 @@ pub fn testfile() -> Vec<&'static str> {
     //         }
     //     });
 
-    WalkDir::new("./")
-        .into_iter()
-        .filter_entry(|e|is_not_hidden(e))
-        .filter_map(|v|v.ok())
-        .for_each(|x|{
-            results.push(x.path().display().to_string().as_str())
-        });
-    return results;
-}
+    // WalkDir::new("./")
+    //     .into_iter()
+    //     .filter_entry(|e|is_not_hidden(e))
+    //     .filter_map(|v|v.ok())
+    //     .for_each(|x|{
+    //         results.push(x.clone().path().display().to_string().as_str())
+    //     });
+    // return results;
+// }
 
 fn is_not_hidden(entry:&DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| !s.ends_with(".jpg"))
+        // .map(|s| !s.ends_with(".jpg"))
+        .map(|s| !s.starts_with(".git"))
         .unwrap_or(false)
 }
 
@@ -119,9 +121,10 @@ struct App<'a> {
     input_mode: InputMode,
     /// History of recorded messages
     messages: Vec<String>,
-    search: Vec<String>,
+    search: StatefulList<String>,
     current: usize,
     items: StatefulList<&'a str>,
+    files: StatefulList<String>
     // events: Vec<(&'a str, &'a str)>,
 }
 
@@ -131,16 +134,47 @@ const TASKS: [&str; 24] = [
     "Item20", "Item21", "Item22", "Item23", "Item24",
 ];
 
+impl<'a> App<'a> {
+    pub fn getfiles(&self) -> Result<Vec<String>,()> {
+        let data: Vec<DirEntry> = WalkDir::new("./").into_iter().filter_map(|e| e.ok()).map(|x|x).collect();
+
+        let mut result = Vec::new();
+        for entry in data.clone() {
+            result.push(entry.path().display().to_string())
+        }
+        Ok(result)
+    }
+
+    pub fn getfiles2(&mut self) {
+        // let info = self.getfiles().unwrap();
+        // for x in info.iter().enumerate() {
+        //     self.files.items.insert(x.0, x.1.to_string());
+        //     // self.items.items.insert(x.0, x.1.as_str());
+        // }
+
+        WalkDir::new("./")
+            .into_iter()
+            .filter_entry(|e|is_not_hidden(e)) // 排除
+            .filter_map(|e| e.ok())
+            .for_each(|x| {
+                self.files.items.insert(0, x.path().display().to_string())
+            })
+    }
+
+
+}
+
 impl<'a> Default for App<'a> {
     fn default() -> App<'a> {
         App {
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
+            items: StatefulList::with_items(vec![]),
             // items: StatefulList::with_items(TASKS.to_vec()),
-            items: StatefulList::with_items(testfile()),
             current: 0,
-            search: Vec::new(),
+            search: StatefulList::with_items(vec![]),
+            files: StatefulList::with_items(vec![])
             // events: vec![
             //     ("Event1", "INFO"),
             //     ("Event2", "INFO"),
@@ -183,6 +217,7 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
 
     // create app and run it
     let mut app = App::default();
+    app.getfiles2();
     let res = run_app(&mut terminal, &mut app);
 
     // restore terminal
@@ -216,8 +251,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         return Ok(());
                     }
                     KeyCode::Left => { 
-                        app.items.unselect();
-                        match app.items.state.selected() {
+                        app.search.unselect();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -225,8 +260,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         }
                     },
                     KeyCode::Down => { 
-                        app.items.next();
-                        match app.items.state.selected() {
+                        app.search.next();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -234,8 +269,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         }
                     },
                     KeyCode::Up => {
-                        app.items.previous();
-                        match app.items.state.selected() {
+                        app.search.previous();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -250,12 +285,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                     }
                     KeyCode::Char(c) => {
                         app.input.push(c);
-                        app.search.clear();
+                        app.search.items.clear();
                         app.current = 0;
-                        app.items.unselect();
-                        for x in &app.items.items {
+                        app.search.unselect();
+                        // app.files.unselect();
+                        for x in &app.files.items {
                             if x.contains(&app.input) {
-                                app.search.push(x.to_string());
+                                app.search.items.insert(0,x.to_string());
                             }
                         }
                     }
@@ -266,8 +302,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         app.input_mode = InputMode::Normal;
                     }
                     KeyCode::Left => { 
-                        app.items.unselect();
-                        match app.items.state.selected() {
+                        app.search.unselect();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -275,8 +311,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         }
                     },
                     KeyCode::Down => { 
-                        app.items.next();
-                        match app.items.state.selected() {
+                        app.search.next();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -284,8 +320,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Res
                         }
                     },
                     KeyCode::Up => {
-                        app.items.previous();
-                        match app.items.state.selected() {
+                        app.search.previous();
+                        match app.search.state.selected() {
                             Some(i) => {
                                 app.current = i;
                             }
@@ -321,7 +357,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to exit, "),
                 Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(format!(" to start editing. {:?}",app.current)),
+                Span::raw(" to start editing. "),
+                Span::raw(format!("{:?}/{:?} {:?} ",app.search.items.len(),app.files.items.len(),app.current)),
             ],
             Style::default().add_modifier(Modifier::RAPID_BLINK),
         ),
@@ -331,7 +368,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to stop editing, "),
                 Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(format!(" to record the message {:?}",app.current)),
+                Span::raw(" to record the message "),
+                Span::raw(format!("{:?}/{:?} {:?} ",app.search.items.len(),app.files.items.len(),app.current)),
             ],
             Style::default(),
         ),
@@ -415,15 +453,21 @@ where
     // let messages =
     //     List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     // f.render_widget(messages, area);
-    app.search.clear();
+    app.search.items.clear();
     app.current = 0;
-    for x in &app.items.items {
+    // for x in &app.items.items {
+    //     if x.contains(&app.input) {
+    //         app.search.push(x.to_string());
+    //     }
+    // }
+    for x in &app.files.items {
         if x.contains(&app.input) {
-            app.search.push(x.to_string());
+            app.search.items.insert(0,x.to_string())
         }
     }
     let items: Vec<ListItem> = app
         .search
+        .items
         .iter()
         .map(|i| {
             ListItem::new(vec![Spans::from(Span::raw(i))])
@@ -457,5 +501,5 @@ where
         .highlight_symbol("> ");
 
     // We can now render the item list
-    f.render_stateful_widget(items, area, &mut app.items.state);
+    f.render_stateful_widget(items, area, &mut app.search.state);
 }
