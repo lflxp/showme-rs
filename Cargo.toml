@@ -22,8 +22,13 @@ oping = "0.3.3"
 tui = { version = "0.17.0", default-features = false, features = ['crossterm'] }
 crossterm = "0.21.0"
 unicode-width = "0.1"
-serde = { version = "1", optional = true, features = ["derive"]}
+# serde = { version = "1", optional = true, features = ["derive"]}
+serde = "1.0"
 walkdir = "2.3.2"
+warp = "0.3"
+parking_lot = "0.10.0"
+pretty_env_logger = "0.4"
+serde_derive = "1.0"
 
 [dependencies.async-std]
 version = "1.9.0"

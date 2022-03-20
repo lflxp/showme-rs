@@ -17,7 +17,7 @@ use log::{debug, error, info, warn};
 use log4rs;
 
 mod server;
-use server::{server1,server_tokio,server_async};
+use server::{server1,server_tokio,server_async,run_wrap};
 
 mod fzf;
 use fzf::run_input;
@@ -205,6 +205,11 @@ async fn main() -> Result<(), Error> {
                 .about("fzf search")
                 .version("0.1")
         )
+        .subcommand(
+            SubCommand::with_name("wrap")
+                .about("wrap server")
+                .version("0.2")
+        )
         .get_matches();
 
     // let matches = clap_app!(myapp =>
@@ -279,6 +284,10 @@ async fn main() -> Result<(), Error> {
                 debug!("async-std");
                 server_async(host,port).await
             },
+            "wrap" => {
+                debug!("wrap");
+                run_wrap().await
+            }
             _ => warn!("unknown type {}", matches.value_of("type").unwrap())
         };
 

@@ -168,7 +168,7 @@ impl<'a> Default for App<'a> {
     fn default() -> App<'a> {
         App {
             input: String::new(),
-            input_mode: InputMode::Normal,
+            input_mode: InputMode::Editing,
             messages: Vec::new(),
             items: StatefulList::with_items(vec![]),
             // items: StatefulList::with_items(TASKS.to_vec()),
@@ -450,7 +450,7 @@ where
         })
         .collect();
     let messages =
-        List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
+        List::new(messages).block(Block::default().borders(Borders::ALL).title("历史命令"));
     f.render_widget(messages, area)
 }
 
@@ -509,7 +509,7 @@ where
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("结果"))
+        .block(Block::default().borders(Borders::ALL).title("文件或文件夹"))
         .highlight_style(
             Style::default()
                 .fg(Color::Red)

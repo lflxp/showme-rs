@@ -9,3 +9,8 @@ server:
 
 fzf:
 	cargo run -- fzf
+
+wrap:
+	@echo curl http://127.0.0.1:3030/ex/src/main.rs
+	@echo curl -H "Content-Type:application/json" -X POST -d '{"service":10,"partId":"2354325235","name":"nameSean","rate":999}' 'http://127.0.0.1:3030/employees/999'
+	cargo run -- server --type wrap
