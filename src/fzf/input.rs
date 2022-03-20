@@ -14,7 +14,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io::{self, Write}};
+use std::{error::Error, io::{self, Write, Read}, path::Path, process};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
@@ -123,7 +123,8 @@ struct App<'a> {
     search: StatefulList<String>,
     current: usize,
     items: StatefulList<&'a str>,
-    files: StatefulList<String>
+    files: StatefulList<String>,
+    history: StatefulList<String>,
     // events: Vec<(&'a str, &'a str)>,
 }
 
@@ -161,7 +162,22 @@ impl<'a> App<'a> {
             })
     }
 
-
+    // https://www.twle.cn/c/yufei/rust/rust-basic-file-input-output.html
+    pub fn gethistory(&mut self) {
+        let finename = String::from("/home/lxp/.zsh_history");
+        let path = Path::new(&finename);
+        if !path.exists() {
+            println!("Not Fount");
+            process::exit(1)
+        }
+        let mut files = std::fs::File::open(&finename).expect("Unable to open file");
+        let mut contents = Vec::new();
+        files.read_to_end(&mut contents).unwrap();
+        // for x in contents.lines() {
+        //     self.history.items.push(x.to_string());
+        // }
+        println!("{:?}",contents);
+    }
 }
 
 impl<'a> Default for App<'a> {
@@ -174,7 +190,8 @@ impl<'a> Default for App<'a> {
             // items: StatefulList::with_items(TASKS.to_vec()),
             current: 0,
             search: StatefulList::with_items(vec![]),
-            files: StatefulList::with_items(vec![])
+            files: StatefulList::with_items(vec![]),
+            history: StatefulList::with_items(vec![])
             // events: vec![
             //     ("Event1", "INFO"),
             //     ("Event2", "INFO"),
@@ -218,6 +235,7 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     // create app and run it
     let mut app = App::default();
     app.getfiles2();
+    app.gethistory();
     let res = run_app(&mut terminal, &mut app);
 
     // restore terminal
@@ -440,13 +458,22 @@ fn draw_left<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
 where
     B: Backend,
 {
+    // let messages: Vec<ListItem> = app
+    //     .messages
+    //     .iter()
+    //     .enumerate()
+    //     .map(|(i, m)| {
+    //         let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
+    //         ListItem::new(content)
+    //     })
+    //     .collect();
+
     let messages: Vec<ListItem> = app
-        .messages
+        .history
+        .items
         .iter()
-        .enumerate()
-        .map(|(i, m)| {
-            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-            ListItem::new(content)
+        .map(|x| {
+            ListItem::new(vec![Spans::from(Span::raw(x))]) 
         })
         .collect();
     let messages =
