@@ -14,7 +14,11 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io::{self, Write, Read}, path::Path, process};
+use std::{
+    error::Error, 
+    io::{self, Write, Read}, 
+    fs::File,
+    path::Path, process};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
@@ -164,19 +168,39 @@ impl<'a> App<'a> {
 
     // https://www.twle.cn/c/yufei/rust/rust-basic-file-input-output.html
     pub fn gethistory(&mut self) {
-        let finename = String::from("/home/lxp/.zsh_history");
+        let finename = String::from(format!("{}/.zsh_history",std::env::home_dir().unwrap().display().to_string()));
         let path = Path::new(&finename);
         if !path.exists() {
-            println!("Not Fount");
+            println!("Not Found");
             process::exit(1)
         }
-        let mut files = std::fs::File::open(&finename).expect("Unable to open file");
-        let mut contents = Vec::new();
-        files.read_to_end(&mut contents).unwrap();
-        // for x in contents.lines() {
-        //     self.history.items.push(x.to_string());
-        // }
-        println!("{:?}",contents);
+        let mut files = File::open(&finename).expect("Unable to open file");
+        let mut buf = vec![];
+        files.read_to_end(&mut buf).expect("uread to end");
+        let contents = String::from_utf8_lossy(&buf);
+        // 数组按倒序排列
+        let mut sorted: Vec<&str> = contents.lines().collect(); // contents.split("\n").collect();
+        // 倒序
+        sorted.reverse();
+        // for line in contents.lines() {
+        for line in sorted {
+            if line.contains(":0;") {
+                // 去除无用数据
+                self.history.items.push(line[15..line.len()].to_string());
+            }
+        }
+        // println!("{:?}",contents);
+
+        // let output = if cfg!(target_os = "windows") {
+        //     Command::new("cmd").arg("/c").arg("dir c:\\").output().expect("cmd exec error!");
+        // } else {
+        //     Command::new("sh").arg("-c").arg("fc -rl 1").output().expect("sh exec error!");
+        // };
+
+        // let output = Command::new("fc").arg("-rl").arg("1").output().expect("sh exec error!");
+
+        // let output_str = String::from_utf8(output.stdout);
+        // println!("11111111111 {:?}", output_str);
     }
 }
 
