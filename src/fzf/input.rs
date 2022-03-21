@@ -615,7 +615,7 @@ fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let mut files = File::open(filename).expect("Unable to open file");
     let mut buf = vec![];
     files.read_to_end(&mut buf).expect("uread to end");
-    let mut contents = String::from_utf8_lossy(&buf);
+    let contents = String::from_utf8_lossy(&buf);
     let mut data = Vec::new();
     for line in contents.lines() {
         data.push(Spans::from(Span::styled(line, Style::default())));
@@ -630,24 +630,24 @@ fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
                 Style::default().add_modifier(Modifier::BOLD),
             ))
     };
-    // let paragraph = Paragraph::new(text.clone())
-    //     .style(Style::default().bg(Color::White).fg(Color::Black))
-    //     .block(create_block("Left, no wrap"))
-    //     .alignment(Alignment::Left);
-    // f.render_widget(paragraph, chunks[0]);
+    let paragraph = Paragraph::new(data.clone())
+        .style(Style::default().bg(Color::White).fg(Color::Black))
+        .block(create_block(filename))
+        .alignment(Alignment::Left);
+    f.render_widget(paragraph, chunks[0]);
     // let paragraph = Paragraph::new(text.clone())
     //     .style(Style::default().bg(Color::White).fg(Color::Black))
     //     .block(create_block("Left, wrap"))
     //     .alignment(Alignment::Left)
     //     .wrap(Wrap { trim: true });
     // f.render_widget(paragraph, chunks[1]);
-    let paragraph = Paragraph::new(data.clone())
-        .style(Style::default().bg(Color::White).fg(Color::Black))
-        .block(create_block("Center, wrap"))
-        .alignment(Alignment::Left)
-        .wrap(Wrap { trim: true })
-        .scroll((app.scroll, 0));
-    f.render_widget(paragraph, chunks[0]);
+    // let paragraph = Paragraph::new(data.clone())
+    //     .style(Style::default().bg(Color::White).fg(Color::Black))
+    //     .block(create_block("Center, wrap"))
+    //     .alignment(Alignment::Left)
+    //     .wrap(Wrap { trim: true })
+    //     .scroll((app.scroll, 0));
+    // f.render_widget(paragraph, chunks[0]);
     // let paragraph = Paragraph::new(text)
     //     .style(Style::default().bg(Color::White).fg(Color::Black))
     //     .block(create_block("Right, wrap"))
