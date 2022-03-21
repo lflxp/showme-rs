@@ -18,43 +18,19 @@ use std::{
     error::Error, 
     io::{self, Write, Read}, 
     fs::File,
+    time::{Duration, Instant},
     path::Path, process};
 use tui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect, Alignment},
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph, ListState},
+    widgets::{Block, Borders, List, ListItem, Paragraph, ListState, Tabs, Wrap},
     Frame, Terminal,
 };
 use unicode_width::UnicodeWidthStr;
 use walkdir::{WalkDir,DirEntry};
 // https://blog.csdn.net/wsp_1138886114/article/details/116454414?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_baidulandingword~default-0.pc_relevant_default&spm=1001.2101.3001.4242.1&utm_relevant_index=3
-
-// pub async fn testfile() -> Result<Vec<String>,()> {
-    // let mut results = Vec::new();
-	// for entry in WalkDir::new("./").into_iter().filter_map(|e| e.ok()) {
-    //     // println!("{}", entry.path().display());
-    //     results.push(entry.path().display().to_string());
-    // }
-
-    // let mut results = WalkDir::new("./")
-    //     .into_iter()
-    //     .filter_map(|e| {
-    //         if e.ok() {
-    //             results.push(e.path().display().to_string().as_str());
-    //         }
-    //     });
-
-    // WalkDir::new("./")
-    //     .into_iter()
-    //     .filter_entry(|e|is_not_hidden(e))
-    //     .filter_map(|v|v.ok())
-    //     .for_each(|x|{
-    //         results.push(x.clone().path().display().to_string().as_str())
-    //     });
-    // return results;
-// }
 
 fn is_not_hidden(entry:&DirEntry) -> bool {
     entry
@@ -116,6 +92,27 @@ impl<T> StatefulList<T> {
     }
 }
 
+pub struct TabsState<'a> {
+    pub titles: Vec<&'a str>,
+    pub index: usize,
+}
+
+impl<'a> TabsState<'a> {
+    pub fn new(titles: Vec<&'a str>) -> TabsState {
+        TabsState { titles, index: 0 }
+    }
+    pub fn next(&mut self) {
+        self.index = (self.index + 1) % self.titles.len();
+    }
+
+    pub fn previous(&mut self) {
+        if self.index > 0 {
+            self.index -= 1;
+        } else {
+            self.index = self.titles.len() - 1;
+        }
+    }
+}
 /// App holds the state of the application
 struct App<'a> {
     /// Current value of the input box
@@ -129,26 +126,13 @@ struct App<'a> {
     items: StatefulList<&'a str>,
     files: StatefulList<String>,
     history: StatefulList<String>,
+    tabs: TabsState<'a>,
+    show_detail: bool, // 显示文件详情
+    scroll: u16,
     // events: Vec<(&'a str, &'a str)>,
 }
 
-// const TASKS: [&str; 24] = [
-//     "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Item7", "Item8", "Item9", "Item10",
-//     "Item11", "Item12", "Item13", "Item14", "Item15", "Item16", "Item17", "Item18", "Item19",
-//     "Item20", "Item21", "Item22", "Item23", "Item24",
-// ];
-
 impl<'a> App<'a> {
-    // pub fn getfiles(&self) -> Result<Vec<String>,()> {
-    //     let data: Vec<DirEntry> = WalkDir::new("./").into_iter().filter_map(|e| e.ok()).map(|x|x).collect();
-
-    //     let mut result = Vec::new();
-    //     for entry in data.clone() {
-    //         result.push(entry.path().display().to_string())
-    //     }
-    //     Ok(result)
-    // }
-
     pub fn getfiles2(&mut self) {
         // let info = self.getfiles().unwrap();
         // for x in info.iter().enumerate() {
@@ -202,6 +186,11 @@ impl<'a> App<'a> {
         // let output_str = String::from_utf8(output.stdout);
         // println!("11111111111 {:?}", output_str);
     }
+
+    fn on_tick(&mut self) {
+        self.scroll += 1;
+        self.scroll %= 50;
+    }
 }
 
 impl<'a> Default for App<'a> {
@@ -215,35 +204,10 @@ impl<'a> Default for App<'a> {
             current: 0,
             search: StatefulList::with_items(vec![]),
             files: StatefulList::with_items(vec![]),
-            history: StatefulList::with_items(vec![])
-            // events: vec![
-            //     ("Event1", "INFO"),
-            //     ("Event2", "INFO"),
-            //     ("Event3", "CRITICAL"),
-            //     ("Event4", "ERROR"),
-            //     ("Event5", "INFO"),
-            //     ("Event6", "INFO"),
-            //     ("Event7", "WARNING"),
-            //     ("Event8", "INFO"),
-            //     ("Event9", "INFO"),
-            //     ("Event10", "INFO"),
-            //     ("Event11", "CRITICAL"),
-            //     ("Event12", "INFO"),
-            //     ("Event13", "INFO"),
-            //     ("Event14", "INFO"),
-            //     ("Event15", "INFO"),
-            //     ("Event16", "INFO"),
-            //     ("Event17", "ERROR"),
-            //     ("Event18", "ERROR"),
-            //     ("Event19", "INFO"),
-            //     ("Event20", "INFO"),
-            //     ("Event21", "WARNING"),
-            //     ("Event22", "INFO"),
-            //     ("Event23", "INFO"),
-            //     ("Event24", "WARNING"),
-            //     ("Event25", "INFO"),
-            //     ("Event26", "INFO"),
-            // ],
+            history: StatefulList::with_items(vec![]),
+            tabs: TabsState::new(vec!["Files","Command","Core","Host","Env","TODO"]),
+            show_detail: false,
+            scroll: 0
         }
     }
 }
@@ -257,10 +221,11 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
+    let tick_rate = Duration::from_millis(250);
     let mut app = App::default();
     app.getfiles2();
     app.gethistory();
-    let res = run_app(&mut terminal, &mut app);
+    let res = run_app(&mut terminal, &mut app, tick_rate);
 
     // restore terminal
     disable_raw_mode()?;
@@ -282,114 +247,133 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App) -> io::Result<()> {
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate: Duration) -> io::Result<()> {
+    let mut last_tick = Instant::now();
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 
-        if let Event::Key(key) = event::read()? {
-            match app.input_mode {
-                // 按键捕获
-                InputMode::Normal => match key.code {
-                    KeyCode::Char('e') => {
-                        app.input_mode = InputMode::Editing;
-                    }
-                    KeyCode::Char('q') => {
-                        return Ok(());
-                    }
-                    KeyCode::Left => { 
-                        app.search.unselect();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
-                            }
-                            None => app.current = 0
-                        }
-                    },
-                    KeyCode::Down => { 
-                        app.search.next();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
-                            }
-                            None => app.current = 0
-                        }
-                    },
-                    KeyCode::Up => {
-                        app.search.previous();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
-                            }
-                            None => app.current = 0
-                        }
-                    },
-                    _ => {}
-                },
-                InputMode::Editing => match key.code {
-                    KeyCode::Enter => {
-                        app.messages.push(app.input.drain(..).collect());
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| Duration::from_secs(10));
 
-                        // let info = app.search.items.get(app.current).unwrap();
-                        // app.messages.push(info.to_string());
-
-                        // https://www.twle.cn/c/yufei/rust/rust-basic-input-output.html
-                        // io::stdout().write_all(info.as_bytes())?;
-
-                        // std::io::stdout().write(format!("\n写入的字节数为：{}",100).as_bytes()).unwrap();
-                        // println!("1111111111111111 {}",info);
-
-                        // process::exit(0);
-                        return Ok(());
-                    }
-                    KeyCode::Char(c) => {
-                        app.input.push(c);
-                        app.search.items.clear();
-                        app.current = 0;
-                        app.search.unselect();
-                        // app.files.unselect();
-                        for x in &app.files.items {
-                            if x.contains(&app.input) {
-                                // app.search.items.insert(x.0,x.1.to_string());
-                                app.search.items.push(x.to_string());
-                            }
+        if crossterm::event::poll(timeout)? {
+            if let Event::Key(key) = event::read()? {
+                match app.input_mode {
+                    // 按键捕获
+                    InputMode::Normal => match key.code {
+                        KeyCode::Char('e') => {
+                            app.input_mode = InputMode::Editing;
                         }
-                    }
-                    KeyCode::Backspace => {
-                        app.input.pop();
-                    }
-                    KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    KeyCode::Left => { 
-                        app.search.unselect();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
-                            }
-                            None => app.current = 0
+                        KeyCode::Char('q') => {
+                            return Ok(());
                         }
+                        KeyCode::Left => { 
+                            app.search.unselect();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+                        },
+                        KeyCode::Down => { 
+                            app.search.next();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+                        },
+                        KeyCode::Up => {
+                            app.search.previous();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+                        },
+                        _ => {}
                     },
-                    KeyCode::Down => { 
-                        app.search.next();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
-                            }
-                            None => app.current = 0
+                    InputMode::Editing => match key.code {
+                        KeyCode::Enter => {
+                            app.messages.push(app.input.drain(..).collect());
+
+                            // let info = app.search.items.get(app.current).unwrap();
+                            // app.messages.push(info.to_string());
+
+                            // https://www.twle.cn/c/yufei/rust/rust-basic-input-output.html
+                            // io::stdout().write_all(info.as_bytes())?;
+
+                            // std::io::stdout().write(format!("\n写入的字节数为：{}",100).as_bytes()).unwrap();
+                            // println!("1111111111111111 {}",info);
+
+                            // process::exit(0);
+                            return Ok(());
                         }
-                    },
-                    KeyCode::Up => {
-                        app.search.previous();
-                        match app.search.state.selected() {
-                            Some(i) => {
-                                app.current = i;
+                        KeyCode::F(1) => {
+                            app.show_detail = !app.show_detail;
+                        },
+                        KeyCode::Char(c) => {
+                            app.input.push(c);
+                            app.search.items.clear();
+                            app.current = 0;
+                            app.search.unselect();
+                            // app.files.unselect();
+                            for x in &app.files.items {
+                                if x.contains(&app.input) {
+                                    // app.search.items.insert(x.0,x.1.to_string());
+                                    app.search.items.push(x.to_string());
+                                }
                             }
-                            None => app.current = 0
                         }
+                        KeyCode::Backspace => {
+                            app.input.pop();
+                        }
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        KeyCode::Left => { 
+                            app.search.unselect();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+
+                            app.tabs.previous();
+                        },
+                        KeyCode::Right => { 
+                            app.tabs.next();
+                        },
+                        KeyCode::Down => { 
+                            app.search.next();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+                        },
+                        KeyCode::Up => {
+                            app.search.previous();
+                            match app.search.state.selected() {
+                                Some(i) => {
+                                    app.current = i;
+                                }
+                                None => app.current = 0
+                            }
+                        },
+                        _ => {}
                     },
-                    _ => {}
-                },
+                }
             }
+        }
+        if last_tick.elapsed() >= tick_rate {
+            app.on_tick();
+            last_tick = Instant::now();
         }
     }
 }
@@ -402,6 +386,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .constraints(
             [
                 Constraint::Length(1),
+                Constraint::Length(3),
                 Constraint::Length(3),
                 Constraint::Min(1),
             ]
@@ -444,7 +429,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
         .block(Block::default().borders(Borders::ALL).title("搜索框"));
-    f.render_widget(input, chunks[1]);
+    f.render_widget(input, chunks[2]);
     match app.input_mode {
         InputMode::Normal =>
             // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
@@ -454,16 +439,53 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             f.set_cursor(
                 // Put cursor past the end of the input text
-                chunks[1].x + app.input.width() as u16 + 1,
+                chunks[2].x + app.input.width() as u16 + 1,
                 // Move one line down, from the border to the input line
-                chunks[1].y + 1,
+                chunks[2].y + 1,
             )
         }
     }
 
+    draw_tabs(f,app,chunks[1]);
     
     // f.render_widget(messages, chunks[2]);
-    draw_message(f,app,chunks[2]);
+    // draw_message(f,app,chunks[3]);
+
+    match app.tabs.index {
+        0 => draw_right(f,app,chunks[3]),
+        1 => draw_left(f,app,chunks[3]),
+        2 => draw_left(f,app,chunks[3]),
+        3 => draw_left(f,app,chunks[3]),
+        4 => draw_left(f,app,chunks[3]),
+        5 => draw_left(f,app,chunks[3]),
+        _ => unreachable!("") 
+    };
+}
+
+fn draw_tabs<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    let titles = app
+        .tabs
+        .titles
+        .iter()
+        .map(|t| {
+            let (first,rest) = t.split_at(1);
+            Spans::from(vec![
+                Span::styled(first,Style::default().fg(Color::Yellow)),
+                Span::styled(rest,Style::default().fg(Color::Green)),
+            ])
+        })
+        .collect();
+
+    let tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title("功能项"))
+        .select(app.tabs.index)
+        .style(Style::default().fg(Color::Cyan))
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::Black),
+        );
+    f.render_widget(tabs, area);
 }
 
 fn draw_message<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
@@ -509,18 +531,20 @@ fn draw_right<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
 where
     B: Backend,
 {
-    // let messages: Vec<ListItem> = app
-    //     .messages
-    //     .iter()
-    //     .enumerate()
-    //     .map(|(i, m)| {
-    //         let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-    //         ListItem::new(content)
-    //     })
-    //     .collect();
-    // let messages =
-    //     List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
-    // f.render_widget(messages, area);
+    let constraints = if app.show_detail { 
+        vec![
+            Constraint::Percentage(60),
+            Constraint::Percentage(40)
+        ]
+    } else {
+        vec![Constraint::Percentage(100)]
+    };
+
+    let chunks = Layout::default()
+        .constraints(constraints.as_ref())
+        .direction(Direction::Horizontal)
+        .split(area);
+
     app.search.items.clear();
     // app.current = 0;
     // for x in &app.items.items {
@@ -541,22 +565,6 @@ where
             ListItem::new(vec![Spans::from(Span::raw(i))])
         })
         .collect();
-    // let items: Vec<ListItem> = app
-    //     .items
-    //     .items
-    //     .iter()
-    //     .map(|i| {
-    //         // let mut lines = vec![Spans::from(i.0)];
-    //         // for _ in 0..i.1 {
-    //         //     lines.push(Spans::from(Span::styled(
-    //         //         "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-    //         //         Style::default().add_modifier(Modifier::ITALIC),
-    //         //     )));
-    //         // }
-    //         // ListItem::new(lines).style(Style::default().fg(Color::Black).bg(Color::White))
-    //         ListItem::new(vec![Spans::from(Span::raw(*i))])
-    //     })
-    //     .collect();
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
@@ -569,5 +577,81 @@ where
         .highlight_symbol("> ");
 
     // We can now render the item list
-    f.render_stateful_widget(items, area, &mut app.search.state);
+    f.render_stateful_widget(items, chunks[0], &mut app.search.state);
+    if app.show_detail {
+        ui_text(f,app,chunks[1]);
+    }
+}
+
+fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+    // Words made "loooong" to demonstrate line breaking.
+    let s = "Veeeeeeeeeeeeeeeery    loooooooooooooooooong   striiiiiiiiiiiiiiiiiiiiiiiiiing.   ";
+    let mut long_line = s.repeat(usize::from(area.width) / s.len() + 4);
+    long_line.push('\n');
+
+    let block = Block::default().style(Style::default().bg(Color::White).fg(Color::Black));
+    f.render_widget(block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                Constraint::Percentage(100),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    let filename = app.search.items.get(app.current).unwrap();
+    let path = Path::new(filename);
+    if !path.exists() {
+        println!("Not Found");
+        process::exit(1)
+    }
+    let mut files = File::open(filename).expect("Unable to open file");
+    let mut buf = vec![];
+    files.read_to_end(&mut buf).expect("uread to end");
+    let mut contents = String::from_utf8_lossy(&buf);
+    let mut data = Vec::new();
+    for line in contents.lines() {
+        data.push(Spans::from(Span::styled(line, Style::default())));
+    }
+
+    let create_block = |title| {
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .title(Span::styled(
+                title,
+                Style::default().add_modifier(Modifier::BOLD),
+            ))
+    };
+    // let paragraph = Paragraph::new(text.clone())
+    //     .style(Style::default().bg(Color::White).fg(Color::Black))
+    //     .block(create_block("Left, no wrap"))
+    //     .alignment(Alignment::Left);
+    // f.render_widget(paragraph, chunks[0]);
+    // let paragraph = Paragraph::new(text.clone())
+    //     .style(Style::default().bg(Color::White).fg(Color::Black))
+    //     .block(create_block("Left, wrap"))
+    //     .alignment(Alignment::Left)
+    //     .wrap(Wrap { trim: true });
+    // f.render_widget(paragraph, chunks[1]);
+    let paragraph = Paragraph::new(data.clone())
+        .style(Style::default().bg(Color::White).fg(Color::Black))
+        .block(create_block("Center, wrap"))
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true })
+        .scroll((app.scroll, 0));
+    f.render_widget(paragraph, chunks[0]);
+    // let paragraph = Paragraph::new(text)
+    //     .style(Style::default().bg(Color::White).fg(Color::Black))
+    //     .block(create_block("Right, wrap"))
+    //     .alignment(Alignment::Right)
+    //     .wrap(Wrap { trim: true });
+    // f.render_widget(paragraph, chunks[3]);
 }

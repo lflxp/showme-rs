@@ -14,7 +14,7 @@ use stopwatch::{Stopwatch};
 
 use std::path::PathBuf;
 use log::{debug, error, info, warn};
-use log4rs;
+// use log4rs;
 
 mod server;
 use server::{server1,server_tokio,server_async,run_wrap};
@@ -404,6 +404,10 @@ async fn main() -> Result<(), Error> {
             Ok(_) => {},
             Err(e) => println!("{:?}", e)
         };
+    }
+
+    if let Some(matches) = matches.subcommand_matches("wrap") {
+        run_wrap().await;
     }
 
     Ok(())
