@@ -614,8 +614,17 @@ fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     }
     let mut files = File::open(filename).expect("Unable to open file");
     let mut buf = vec![];
-    files.read_to_end(&mut buf).expect("uread to end");
-    let contents = String::from_utf8_lossy(&buf);
+    let contents:String;
+    // files.read_to_end(&mut buf).expect("uread to end");
+    match files.read_to_end(&mut buf) {
+        Ok(_) => {
+            contents = String::from_utf8_lossy(&buf).to_string();
+        },
+        Err(e) => {
+            contents = String::from(format!("{}", e));
+        }
+    };
+    
     let mut data = Vec::new();
     for line in contents.lines() {
         data.push(Spans::from(Span::styled(line, Style::default())));
