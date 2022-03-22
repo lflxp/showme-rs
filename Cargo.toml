@@ -29,7 +29,16 @@ warp = "0.3"
 parking_lot = "0.10.0"
 pretty_env_logger = "0.4"
 serde_derive = "1.0"
+paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust.git", branch = "master" }
 
 [dependencies.async-std]
 version = "1.9.0"
 features = ["attributes"]
+
+[[bin]]
+name = "sub"
+path = "src/sub/main.rs"
+
+[[bin]]
+name = "pub"
+path = "src/pub/main.rs"

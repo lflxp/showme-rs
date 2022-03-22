@@ -8,7 +8,7 @@ server:
 	cargo run -- server -h 0.0.0.0 -t tokio -p 9999
 
 fzf:
-	cargo run -- fzf
+	cargo run --bin clapdemo -- fzf
 
 wrap:
 	@echo curl http://127.0.0.1:3030/ex/src/main.rs
