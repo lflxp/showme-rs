@@ -65,3 +65,4 @@ No verbose info
 2. gui
 3. static http server
 4. gotty
+5. mqtt => https://zhuanlan.zhihu.com/p/264181114 => https://gitee.com/lflxp/mqtt-example-rust

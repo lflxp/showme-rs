@@ -123,9 +123,10 @@ struct App<'a> {
     messages: Vec<String>,
     search: StatefulList<String>,
     current: usize,
-    items: StatefulList<&'a str>,
+    // items: StatefulList<&'a str>,
     files: StatefulList<String>,
     history: StatefulList<String>,
+    history_search: StatefulList<String>,
     tabs: TabsState<'a>,
     show_detail: bool, // 显示文件详情
     scroll: u16,
@@ -199,12 +200,13 @@ impl<'a> Default for App<'a> {
             input: String::new(),
             input_mode: InputMode::Editing,
             messages: Vec::new(),
-            items: StatefulList::with_items(vec![]),
+            // items: StatefulList::with_items(vec![]),
             // items: StatefulList::with_items(TASKS.to_vec()),
             current: 0,
             search: StatefulList::with_items(vec![]),
             files: StatefulList::with_items(vec![]),
             history: StatefulList::with_items(vec![]),
+            history_search: StatefulList::with_items(vec![]),
             tabs: TabsState::new(vec!["Files","Command","Core","Host","Env","TODO"]),
             show_detail: false,
             scroll: 0
@@ -236,8 +238,15 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
+    // 获取回车信息
+    let mut info:&String = &String::from("");
     // 显示输出
-    let info = app.search.items.get(app.current).unwrap();
+    if app.tabs.index == 0 {
+        info = app.search.items.get(app.current).unwrap();
+    } else if app.tabs.index == 1 {
+        info = app.history_search.items.get(app.current).unwrap();
+    }
+    
     io::stdout().write_all(info.as_bytes())?;
     
     if let Err(err) = res {
@@ -267,33 +276,33 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                         KeyCode::Char('q') => {
                             return Ok(());
                         }
-                        KeyCode::Left => { 
-                            app.search.unselect();
-                            match app.search.state.selected() {
-                                Some(i) => {
-                                    app.current = i;
-                                }
-                                None => app.current = 0
-                            }
-                        },
-                        KeyCode::Down => { 
-                            app.search.next();
-                            match app.search.state.selected() {
-                                Some(i) => {
-                                    app.current = i;
-                                }
-                                None => app.current = 0
-                            }
-                        },
-                        KeyCode::Up => {
-                            app.search.previous();
-                            match app.search.state.selected() {
-                                Some(i) => {
-                                    app.current = i;
-                                }
-                                None => app.current = 0
-                            }
-                        },
+                        // KeyCode::Left => { 
+                        //     app.search.unselect();
+                        //     match app.search.state.selected() {
+                        //         Some(i) => {
+                        //             app.current = i;
+                        //         }
+                        //         None => app.current = 0
+                        //     }
+                        // },
+                        // KeyCode::Down => { 
+                        //     app.search.next();
+                        //     match app.search.state.selected() {
+                        //         Some(i) => {
+                        //             app.current = i;
+                        //         }
+                        //         None => app.current = 0
+                        //     }
+                        // },
+                        // KeyCode::Up => {
+                        //     app.search.previous();
+                        //     match app.search.state.selected() {
+                        //         Some(i) => {
+                        //             app.current = i;
+                        //         }
+                        //         None => app.current = 0
+                        //     }
+                        // },
                         _ => {}
                     },
                     InputMode::Editing => match key.code {
@@ -317,16 +326,30 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                         },
                         KeyCode::Char(c) => {
                             app.input.push(c);
-                            app.search.items.clear();
-                            app.current = 0;
-                            app.search.unselect();
-                            // app.files.unselect();
-                            for x in &app.files.items {
-                                if x.contains(&app.input) {
-                                    // app.search.items.insert(x.0,x.1.to_string());
-                                    app.search.items.push(x.to_string());
+
+                            if app.tabs.index == 0 {
+                                app.search.items.clear();
+                                app.current = 0;
+                                app.search.unselect();
+                                // app.files.unselect();
+                                for x in &app.files.items {
+                                    if x.contains(&app.input) {
+                                        // app.search.items.insert(x.0,x.1.to_string());
+                                        app.search.items.push(x.to_string());
+                                    }
+                                }
+                            } else if app.tabs.index == 1 {
+                                app.history_search.items.clear();
+                                app.current = 0;
+                                app.history_search.unselect();
+                                for x in &app.history.items {
+                                    if x.contains(&app.input) {
+                                        // app.search.items.insert(x.0,x.1.to_string());
+                                        app.history_search.items.push(x.to_string());
+                                    }
                                 }
                             }
+                            
                         }
                         KeyCode::Backspace => {
                             app.input.pop();
@@ -349,21 +372,41 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             app.tabs.next();
                         },
                         KeyCode::Down => { 
-                            app.search.next();
-                            match app.search.state.selected() {
-                                Some(i) => {
-                                    app.current = i;
+                            if app.tabs.index == 0 {
+                                app.search.next();
+                                match app.search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
                                 }
-                                None => app.current = 0
+                            } else if app.tabs.index == 1 {
+                                app.history_search.next();
+                                match app.history_search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
+                                }
                             }
                         },
                         KeyCode::Up => {
-                            app.search.previous();
-                            match app.search.state.selected() {
-                                Some(i) => {
-                                    app.current = i;
+                            if app.tabs.index == 0 {
+                                app.search.previous();
+                                match app.search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
                                 }
-                                None => app.current = 0
+                            } else if app.tabs.index == 1 {
+                                app.history_search.previous();
+                                match app.history_search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
+                                }
                             }
                         },
                         _ => {}
@@ -488,43 +531,50 @@ fn draw_tabs<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     f.render_widget(tabs, area);
 }
 
-fn draw_message<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
-    let chunks = Layout::default()
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50)
-        ])
-        .direction(Direction::Horizontal)
-        .split(area);
-    draw_left(f,app,chunks[1]);
-    draw_right(f,app,chunks[0]);
-}
+// fn draw_message<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+//     let chunks = Layout::default()
+//         .constraints([
+//             Constraint::Percentage(50),
+//             Constraint::Percentage(50)
+//         ])
+//         .direction(Direction::Horizontal)
+//         .split(area);
+//     draw_left(f,app,chunks[1]);
+//     draw_right(f,app,chunks[0]);
+// }
 
 fn draw_left<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
 where
     B: Backend,
 {
-    // let messages: Vec<ListItem> = app
-    //     .messages
-    //     .iter()
-    //     .enumerate()
-    //     .map(|(i, m)| {
-    //         let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-    //         ListItem::new(content)
-    //     })
-    //     .collect();
+    app.history_search.items.clear();
+    for x in &app.history.items {
+        if x.contains(&app.input) {
+            app.history_search.items.push(x.to_string())
+        }
+    }
 
     let messages: Vec<ListItem> = app
-        .history
+        .history_search
         .items
         .iter()
         .map(|x| {
             ListItem::new(vec![Spans::from(Span::raw(x))]) 
         })
         .collect();
-    let messages =
-        List::new(messages).block(Block::default().borders(Borders::ALL).title("历史命令"));
-    f.render_widget(messages, area)
+    
+    // Create a List from all list items and highlight the currently selected one
+    let items = List::new(messages)
+        .block(Block::default().borders(Borders::ALL).title("历史命令"))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Red)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ");
+
+    // We can now render the item list
+    f.render_stateful_widget(items, area, &mut app.history_search.state);
 }
 
 fn draw_right<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
@@ -554,7 +604,7 @@ where
     // }
     for x in &app.files.items {
         if x.contains(&app.input) {
-            app.search.items.insert(0,x.to_string())
+            app.search.items.push(x.to_string())
         }
     }
     let items: Vec<ListItem> = app
