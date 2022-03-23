@@ -656,28 +656,35 @@ fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         )
         .split(area);
 
-    let filename = app.search.items.get(app.current).unwrap();
-    let path = Path::new(filename);
-    if !path.exists() {
-        println!("Not Found");
-        process::exit(1)
-    }
-    let mut files = File::open(filename).expect("Unable to open file");
-    let mut buf = vec![];
+    let mut filename = &String::from("None");
     let contents:String;
-    // files.read_to_end(&mut buf).expect("uread to end");
-    match files.read_to_end(&mut buf) {
-        Ok(_) => {
-            contents = String::from_utf8_lossy(&buf).to_string();
-        },
-        Err(e) => {
-            contents = String::from(format!("{}", e));
-        }
-    };
-    
     let mut data = Vec::new();
-    for line in contents.lines() {
-        data.push(Spans::from(Span::styled(line, Style::default())));
+    if app.search.items.len() > 0 {
+        filename = app.search.items.get(app.current).unwrap();
+        let path = Path::new(filename);
+        if !path.exists() {
+            println!("Not Found");
+            process::exit(1)
+        }
+        let mut files = File::open(filename).expect("Unable to open file");
+        let mut buf = vec![];
+        
+        // files.read_to_end(&mut buf).expect("uread to end");
+        match files.read_to_end(&mut buf) {
+            Ok(_) => {
+                contents = String::from_utf8_lossy(&buf).to_string();
+            },
+            Err(e) => {
+                contents = String::from(format!("{}", e));
+            }
+        };
+        
+        
+        for line in contents.lines() {
+            data.push(Spans::from(Span::styled(line, Style::default())));
+        }
+    } else {
+        data.push(Spans::from(Span::styled("None", Style::default())))
     }
 
     let create_block = |title| {
