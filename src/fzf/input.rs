@@ -19,7 +19,7 @@ use std::{
     io::{self, Write, Read}, 
     fs::File,
     time::{Duration, Instant},
-    path::Path, process};
+    path::Path, process::{self, Command}};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect, Alignment},
@@ -127,9 +127,13 @@ struct App<'a> {
     files: StatefulList<String>,
     history: StatefulList<String>,
     history_search: StatefulList<String>,
+    gits: StatefulList<String>,
+    gits_search: StatefulList<String>,
     tabs: TabsState<'a>,
     show_detail: bool, // 显示文件详情
     scroll: u16,
+    gits_detail: StatefulList<String>,
+    currentdetail: usize,
     // events: Vec<(&'a str, &'a str)>,
 }
 
@@ -188,6 +192,29 @@ impl<'a> App<'a> {
         // println!("11111111111 {:?}", output_str);
     }
 
+    pub fn get_git(&mut self) {
+        // let output = if cfg!(target_os = "windows") {
+        //     Command::new("cmd").arg("/c").arg("git log --pretty=format:'%h %s'").output().expect("cmd exec error!");
+        // } else {
+        //     Command::new("sh").arg("-c").arg("git log --pretty=format:'%h %s'").output().expect("sh exec error!");
+        // };
+
+        let output = Command::new("sh").arg("-c").arg("git log --pretty=format:'%h %s %cr'").output().expect("命令执行异常错误提示");
+        let ls_la_list = String::from_utf8(output.stdout);
+        // println!("{:?}",ls_la_list);
+        match ls_la_list {
+            Ok(info) => {
+                for x in info.lines() {
+                    self.gits.items.push(x.to_string());
+                }
+            },
+            Err(e) => {
+                self.gits.items.push(format!("{}", e));
+                eprintln!("{}", e)
+            }
+        }
+    }
+
     fn on_tick(&mut self) {
         self.scroll += 1;
         self.scroll %= 50;
@@ -207,9 +234,13 @@ impl<'a> Default for App<'a> {
             files: StatefulList::with_items(vec![]),
             history: StatefulList::with_items(vec![]),
             history_search: StatefulList::with_items(vec![]),
-            tabs: TabsState::new(vec!["Files","Command","Core","Host","Env","TODO"]),
+            tabs: TabsState::new(vec!["Files(F2)","Command(F3)","Git(F4)","Host","Env","TODO"]),
             show_detail: false,
-            scroll: 0
+            scroll: 0,
+            gits: StatefulList::with_items(vec![]),
+            gits_search: StatefulList::with_items(vec![]),
+            gits_detail: StatefulList::with_items(vec![]),
+            currentdetail: 0,
         }
     }
 }
@@ -227,6 +258,7 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     let mut app = App::default();
     app.getfiles2();
     app.gethistory();
+    app.get_git();
     let res = run_app(&mut terminal, &mut app, tick_rate);
 
     // restore terminal
@@ -324,12 +356,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                         KeyCode::F(1) => {
                             app.show_detail = !app.show_detail;
                         },
+                        KeyCode::F(2) => {
+                            app.current = 0;
+                            app.tabs.index = 0;
+                        },
+                        KeyCode::F(3) => {
+                            app.current = 0;
+                            app.tabs.index = 1;
+                        },
+                        KeyCode::F(4) => {
+                            app.current = 0;
+                            app.tabs.index = 2;
+                        },
                         KeyCode::Char(c) => {
                             app.input.push(c);
-
+                            app.current = 0;
                             if app.tabs.index == 0 {
                                 app.search.items.clear();
-                                app.current = 0;
                                 app.search.unselect();
                                 // app.files.unselect();
                                 for x in &app.files.items {
@@ -340,12 +383,20 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                 }
                             } else if app.tabs.index == 1 {
                                 app.history_search.items.clear();
-                                app.current = 0;
                                 app.history_search.unselect();
                                 for x in &app.history.items {
                                     if x.contains(&app.input) {
                                         // app.search.items.insert(x.0,x.1.to_string());
                                         app.history_search.items.push(x.to_string());
+                                    }
+                                }
+                            } else if app.tabs.index == 2 {
+                                app.gits_search.items.clear();
+                                app.gits_search.unselect();
+                                for x in &app.gits.items {
+                                    if x.contains(&app.input) {
+                                        // app.search.items.insert(x.0,x.1.to_string());
+                                        app.gits_search.items.push(x.to_string());
                                     }
                                 }
                             }
@@ -356,7 +407,25 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                         }
                         KeyCode::Esc => {
                             app.input_mode = InputMode::Normal;
-                        }
+                        },
+                        KeyCode::Home => {
+                            app.gits_detail.previous();
+                            match app.gits_detail.state.selected() {
+                                Some(i) => {
+                                    app.currentdetail = i;
+                                }
+                                None => app.currentdetail = 0
+                            }
+                        },
+                        KeyCode::End => {
+                            app.gits_detail.next();
+                            match app.gits_detail.state.selected() {
+                                Some(i) => {
+                                    app.currentdetail = i;
+                                }
+                                None => app.currentdetail = 0
+                            }
+                        },
                         KeyCode::Left => { 
                             app.search.unselect();
                             match app.search.state.selected() {
@@ -388,6 +457,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                     }
                                     None => app.current = 0
                                 }
+                            } else if app.tabs.index == 2 {
+                                app.currentdetail = 0;
+                                app.gits_search.next();
+                                match app.gits_search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
+                                }
                             }
                         },
                         KeyCode::Up => {
@@ -402,6 +480,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             } else if app.tabs.index == 1 {
                                 app.history_search.previous();
                                 match app.history_search.state.selected() {
+                                    Some(i) => {
+                                        app.current = i;
+                                    }
+                                    None => app.current = 0
+                                }
+                            }  else if app.tabs.index == 2 {
+                                app.currentdetail = 0;
+                                app.gits_search.previous();
+                                match app.gits_search.state.selected() {
                                     Some(i) => {
                                         app.current = i;
                                     }
@@ -444,7 +531,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to exit, "),
                 Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to start editing. "),
+                Span::raw(" to start editing, F1 to show detail window, Home|End with detail Up and Down, F2|F3|F4 change tab shortKey."),
                 Span::raw(format!("{:?}/{:?} {:?} ",app.search.items.len(),app.files.items.len(),app.current)),
             ],
             Style::default().add_modifier(Modifier::RAPID_BLINK),
@@ -455,7 +542,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(" to stop editing, "),
                 Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to record the message "),
+                Span::raw(" to record the message, F1 to show detail window, Home|End with detail Up and Down, F2|F3|F4 change tab shortKey "),
                 Span::raw(format!("{:?}/{:?} {:?} ",app.search.items.len(),app.files.items.len(),app.current)),
             ],
             Style::default(),
@@ -497,7 +584,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     match app.tabs.index {
         0 => draw_right(f,app,chunks[3]),
         1 => draw_left(f,app,chunks[3]),
-        2 => draw_left(f,app,chunks[3]),
+        2 => draw_commit(f,app,chunks[3]),
         3 => draw_left(f,app,chunks[3]),
         4 => draw_left(f,app,chunks[3]),
         5 => draw_left(f,app,chunks[3]),
@@ -618,7 +705,7 @@ where
 
     // Create a List from all list items and highlight the currently selected one
     let items = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("文件或文件夹"))
+        .block(Block::default().borders(Borders::ALL).title("文件或文件夹 [Detail(F1)]"))
         .highlight_style(
             Style::default()
                 .fg(Color::Red)
@@ -721,3 +808,119 @@ fn ui_text<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     //     .wrap(Wrap { trim: true });
     // f.render_widget(paragraph, chunks[3]);
 }
+
+// ==================DRAW GIT COMMIT====================================
+fn draw_commit<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
+where
+    B: Backend,
+{
+    let constraints = if app.show_detail { 
+        vec![
+            Constraint::Percentage(60),
+            Constraint::Percentage(40)
+        ]
+    } else {
+        vec![Constraint::Percentage(100)]
+    };
+
+    let chunks = Layout::default()
+        .constraints(constraints.as_ref())
+        .direction(Direction::Horizontal)
+        .split(area);
+
+    app.gits_search.items.clear();
+    // app.current = 0;
+    // for x in &app.items.items {
+    //     if x.contains(&app.input) {
+    //         app.search.push(x.to_string());
+    //     }
+    // }
+    for x in &app.gits.items {
+        if x.contains(&app.input) {
+            app.gits_search.items.push(x.to_string())
+        }
+    }
+    let items: Vec<ListItem> = app
+        .gits_search
+        .items
+        .iter()
+        .map(|i| {
+            ListItem::new(vec![Spans::from(Span::raw(i))])
+        })
+        .collect();
+
+    // Create a List from all list items and highlight the currently selected one
+    let items = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Git Commit [Detail(F1)]"))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Red)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ");
+
+    // We can now render the item list
+    f.render_stateful_widget(items, chunks[0], &mut app.gits_search.state);
+    if app.show_detail {
+        ui_text_git(f,app,chunks[1]);
+    }
+}
+
+fn ui_text_git<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
+    // Words made "loooong" to demonstrate line breaking.
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                // Constraint::Percentage(25),
+                Constraint::Percentage(100),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    app.gits_detail.items.clear();
+    app.currentdetail = 0;
+    let mut filename = &String::from("None");
+    // let mut data: Vec<ListItem> = Vec::new();
+    if app.gits_search.items.len() > 0 {
+        filename = app.gits_search.items.get(app.current).unwrap();
+        let output = Command::new("sh").arg("-c").arg(format!("git show {}",filename.split(' ').collect::<Vec<&str>>()[0])).output().expect("命令执行异常错误提示");
+        let ls_la_list = String::from_utf8(output.stdout); 
+        match ls_la_list {
+            Ok(info) => {
+                for x in info.lines() {
+                    app.gits_detail.items.push(x.to_string());
+                }
+            },
+            Err(e) => {
+                app.gits_detail.items.push(format!("{}",e))
+            }
+        };
+    } else {
+        app.gits_detail.items.push(String::from("None"))
+    }
+
+    let items: Vec<ListItem> = app
+        .gits_detail.items
+        .iter()
+        .map(|i| {
+            ListItem::new(vec![Spans::from(Span::raw(i))])
+        })
+        .collect();
+
+    let items = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title(format!("{} (Home/End)",filename)))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Green)
+                .bg(Color::Gray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ");
+    f.render_stateful_widget(items, chunks[0],&mut app.gits_detail.state);
+}
+
