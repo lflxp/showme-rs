@@ -25,7 +25,7 @@ use tui::{
     layout::{Constraint, Direction, Layout, Rect, Alignment},
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph, ListState, Tabs, Wrap},
+    widgets::{Block, Borders, List, ListItem, Paragraph, ListState, Tabs, Wrap, Clear},
     Frame, Terminal,
 };
 use unicode_width::UnicodeWidthStr;
@@ -134,6 +134,7 @@ struct App<'a> {
     scroll: u16,
     gits_detail: StatefulList<String>,
     currentdetail: usize,
+    show_popup: bool,
     // events: Vec<(&'a str, &'a str)>,
 }
 
@@ -224,6 +225,7 @@ impl<'a> App<'a> {
 impl<'a> Default for App<'a> {
     fn default() -> App<'a> {
         App {
+            show_popup: false,
             input: String::new(),
             input_mode: InputMode::Editing,
             messages: Vec::new(),
@@ -351,7 +353,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             // println!("1111111111111111 {}",info);
 
                             // process::exit(0);
-                            return Ok(());
+                            if app.tabs.index == 2 {
+                                app.show_popup = !app.show_popup;
+                            } else {
+                                return Ok(());
+                            }
                         }
                         KeyCode::F(1) => {
                             app.show_detail = !app.show_detail;
@@ -814,10 +820,11 @@ fn draw_commit<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
 where
     B: Backend,
 {
+    let size = f.size();
     let constraints = if app.show_detail { 
         vec![
-            Constraint::Percentage(60),
-            Constraint::Percentage(40)
+            Constraint::Percentage(40),
+            Constraint::Percentage(60)
         ]
     } else {
         vec![Constraint::Percentage(100)]
@@ -863,6 +870,18 @@ where
     f.render_stateful_widget(items, chunks[0], &mut app.gits_search.state);
     if app.show_detail {
         ui_text_git(f,app,chunks[1]);
+    }
+
+    // popup 显示git reset提示
+    if app.show_popup {
+        let filename = app.gits_search.items.get(app.current).unwrap();
+        let paragraph = Paragraph::new(String::from(format!("git reset --hard {}",filename)))
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(Block::default().title("是/否回退？").borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        let area = centered_rect(60,20,size);
+        f.render_widget(Clear, area); //this clears out the background
+        f.render_widget(paragraph, area);
     }
 }
 
@@ -924,3 +943,29 @@ fn ui_text_git<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
     f.render_stateful_widget(items, chunks[0],&mut app.gits_detail.state);
 }
 
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
+}
