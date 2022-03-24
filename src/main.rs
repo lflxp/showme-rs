@@ -24,7 +24,7 @@ use fzf::run_input;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
 
     ctrlc::set_handler(move || {
         println!("Say Good Bye!");

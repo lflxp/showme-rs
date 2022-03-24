@@ -415,21 +415,25 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             app.input_mode = InputMode::Normal;
                         },
                         KeyCode::Home => {
-                            app.gits_detail.previous();
-                            match app.gits_detail.state.selected() {
-                                Some(i) => {
-                                    app.currentdetail = i;
+                            if app.tabs.index == 2 {
+                                app.gits_detail.previous();
+                                match app.gits_detail.state.selected() {
+                                    Some(i) => {
+                                        app.currentdetail = i;
+                                    }
+                                    None => app.currentdetail = 0
                                 }
-                                None => app.currentdetail = 0
                             }
                         },
                         KeyCode::End => {
-                            app.gits_detail.next();
-                            match app.gits_detail.state.selected() {
-                                Some(i) => {
-                                    app.currentdetail = i;
+                            if app.tabs.index == 2 {
+                                app.gits_detail.next();
+                                match app.gits_detail.state.selected() {
+                                    Some(i) => {
+                                        app.currentdetail = i;
+                                    }
+                                    None => app.currentdetail = 0
                                 }
-                                None => app.currentdetail = 0
                             }
                         },
                         KeyCode::Left => { 

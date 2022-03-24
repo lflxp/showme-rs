@@ -176,3 +176,10 @@ fn main(){
 3. static http server
 4. gotty
 5. mqtt => https://zhuanlan.zhihu.com/p/264181114 => https://gitee.com/lflxp/mqtt-example-rust
+6. git log + git show + git reset + git stash/status + rs popus
+7. kubectl get po + kubectl edit + $*
+8. rust shell => https://www.cnblogs.com/ishenghuo/p/12550142.html
+
+# BUG
+
+1. HOME/END
