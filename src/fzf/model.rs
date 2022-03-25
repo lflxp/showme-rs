@@ -201,6 +201,25 @@ impl<'a> App<'a> {
         }
     }
 
+    pub fn get_k8s(&mut self) {
+        self.kind_data.items.clear();
+        if !self.kind.is_empty() {
+            let output = Command::new("sh").arg("-c").arg(format!("kubectl get {} -A",self.kind)).output().expect("命令执行异常错误提示");
+            let ls_la_list = String::from_utf8(output.stdout); 
+            match ls_la_list {
+                Ok(info) => {
+                    for x in info.lines() {
+                        self.kind_data.items.push(x.to_string());
+                        self.kind_search.items.push(x.to_string());
+                    }
+                },
+                Err(e) => {
+                    self.kind_data.items.push(format!("{}",e))
+                }
+            };
+        }
+    }
+
     pub fn on_tick(&mut self) {
         self.scroll += 1;
         self.scroll %= 50;

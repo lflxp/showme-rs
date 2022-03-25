@@ -17,7 +17,8 @@ use crossterm::{
 };
 use std::{
     error::Error, 
-    io::{self, Write}, 
+    io::{self, Write},
+    process::{self, Command},
     time::{Duration, Instant},
 };
 use tui::{
@@ -46,6 +47,7 @@ pub fn run_input() -> Result<(), Box<dyn Error>> {
     app.getfiles2();
     app.gethistory();
     app.get_git();
+    app.get_k8s();
     let res = run_app(&mut terminal, &mut app, tick_rate);
 
     // restore terminal
@@ -141,7 +143,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             if app.tabs.index == 2 {
                                 app.show_popup = !app.show_popup;
                             } else if  app.tabs.index == 3 {
-                                app.kind_input = !app.kind_input;
+                                let filename = app.kind_search.items.get(app.current).unwrap();
+                                let tmp = filename.split(' ').collect::<Vec<&str>>();
+                                execShell(format!("kubectl edit {} -n {} {}",app.kind,tmp[0],tmp[1]));
+                                // terminal.flush().expect_err("刷新页面失败");
+                                return Ok(());
                             } else {
                                 return Ok(());
                             }
@@ -165,8 +171,37 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             app.current = 0;
                             app.tabs.index = 3;
                         },
+                        KeyCode::F(6) => {
+                            // 当在k8s界面 触发
+                            if app.tabs.index == 3 {
+                                // 修改获取的app.kind
+                                app.kind_input = !app.kind_input;
+                                // 移动初始化
+                                app.kind_data.items.clear();
+                                if !app.kind.is_empty() {
+                                    let output = Command::new("sh").arg("-c").arg(format!("kubectl get {} -A",app.kind)).output().expect("命令执行异常错误提示");
+                                    let ls_la_list = String::from_utf8(output.stdout); 
+                                    match ls_la_list {
+                                        Ok(info) => {
+                                            for x in info.lines() {
+                                                app.kind_data.items.push(x.to_string());
+                                            }
+                                        },
+                                        Err(e) => {
+                                            app.kind_data.items.push(format!("{}",e))
+                                        }
+                                    };
+                                }
+                            }
+                        },
                         KeyCode::Char(c) => {
-                            app.input.push(c);
+                            // 切换输入
+                            if !app.kind_input {
+                                app.input.push(c);
+                            } else {
+                                app.kind.push(c);
+                            }
+                            
                             app.current = 0;
                             if app.tabs.index == 0 {
                                 app.search.items.clear();
@@ -208,7 +243,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                             }
                         }
                         KeyCode::Backspace => {
-                            app.input.pop();
+                            // 切换删除
+                            if !app.kind_input {
+                                app.input.pop();
+                            } else {
+                                app.kind.pop();
+                            }
                         }
                         KeyCode::Esc => {
                             app.input_mode = InputMode::Normal;
@@ -223,6 +263,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                     None => app.currentdetail = 0
                                 }
                             } else if app.tabs.index == 3 {
+                                app.kinddetail = 0;
                                 app.kind_detail.previous();
                                 match app.kind_detail.state.selected() {
                                     Some(i) => {
@@ -242,6 +283,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                     None => app.currentdetail = 0
                                 }
                             } else if app.tabs.index == 3 {
+                                app.kinddetail = 0;
                                 app.kind_detail.next();
                                 match app.kind_detail.state.selected() {
                                     Some(i) => {
@@ -292,6 +334,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                     None => app.current = 0
                                 }
                             } else if app.tabs.index == 3 {
+                                app.kind_detail.items.clear();
                                 app.kinddetail = 0;
                                 app.kind_search.next();
                                 match app.kind_search.state.selected() {
@@ -329,6 +372,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: &mut App, tick_rate:
                                     None => app.current = 0
                                 }
                             } else if app.tabs.index == 3 {
+                                app.kind_detail.items.clear();
                                 app.kinddetail = 0;
                                 app.kind_search.previous();
                                 match app.kind_search.state.selected() {

@@ -10,9 +10,6 @@ use tui::{
     layout::{Rect,Alignment, Layout, Direction, Constraint},
     Frame
 };
-use crossterm::{
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
 
 // 设计：1、kubectl get po -A 2、kubectl edit po -n a b 3、kubectl get po -n a b -o yaml
 
@@ -21,6 +18,14 @@ where
     B: Backend,
 {
     let size = f.size();
+    // 准备数据
+    app.kind_search.items.clear();
+    for x in &app.kind_data.items {
+        if x.contains(&app.input) {
+            app.kind_search.items.push(x.to_string());
+        }
+    }
+
     let constraints = if app.show_detail { 
         vec![
             Constraint::Percentage(40),
@@ -34,24 +39,6 @@ where
         .constraints(constraints.as_ref())
         .direction(Direction::Horizontal)
         .split(area);
-
-    // app.kind_data.items.clear();
-    app.kind_search.items.clear();
-    if !app.kind.is_empty() {
-        let output = Command::new("sh").arg("-c").arg(format!("kubectl get {} -A",app.kind)).output().expect("命令执行异常错误提示");
-        let ls_la_list = String::from_utf8(output.stdout); 
-        match ls_la_list {
-            Ok(info) => {
-                for x in info.lines() {
-                    app.kind_data.items.push(x.to_string());
-                    app.kind_search.items.push(x.to_string());
-                }
-            },
-            Err(e) => {
-                app.kind_data.items.push(format!("{}",e))
-            }
-        };
-    }
 
     let messages: Vec<ListItem> = app
         .kind_search
@@ -78,21 +65,21 @@ where
         ui_text_k8s(f,app,chunks[1]);
     }
 
-
     if app.kind_input {
-        let filename = app.kind_search.items.get(app.current).unwrap();
-        let tmp = filename.split(' ').collect::<Vec<&str>>();
-        execShell(format!("kubectl edit {} -n {} {}",app.kind,tmp[0],tmp[1]));
-        // disable_raw_mode().unwrap();
-        // let paragraph = Paragraph::new(String::from(format!("kubectl edit po -n {}",filename)))
-        //     .style(Style::default().bg(Color::White).fg(Color::Black))
-        //     .block(Block::default().title("是/否回退？").borders(Borders::ALL))
-        //     .alignment(Alignment::Center);
-        // let area = centered_rect(60,20,size);
-        // f.render_widget(Clear, area); //this clears out the background
-        // f.render_widget(paragraph, area);
+        // let filename = app.kind_search.items.get(app.current).unwrap();
+        let paragraph = Paragraph::new(app.kind.as_ref())
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(Block::default().title("修改查询类型 F6(on/off)").borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        let area2 = centered_rect(60,20,size);
+        f.render_widget(Clear, area2); // this clears out the background
+        f.render_widget(paragraph, area2);
     }
 }
+
+// fn ui_change_kind<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
+    
+// }
 
 fn ui_text_k8s<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
     // Words made "loooong" to demonstrate line breaking.
@@ -110,11 +97,11 @@ fn ui_text_k8s<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
         )
         .split(area);
 
-    app.kind_detail.items.clear();
-    app.kinddetail = 0;
+    // app.kind_detail.items.clear();
+    // app.kinddetail = 0;
     let mut filename = &String::from("None");
     // let mut data: Vec<ListItem> = Vec::new();
-    if app.kind_search.items.len() > 0 {
+    if app.kind_detail.items.len() == 0 {
         filename = app.kind_search.items.get(app.current).unwrap();
         let tmp = filename.split(' ').collect::<Vec<&str>>();
         let output = Command::new("sh").arg("-c").arg(format!("kubectl get {} -n {} {} -o yaml",app.kind,tmp[0],tmp[1])).output().expect("命令执行异常错误提示");
@@ -129,9 +116,10 @@ fn ui_text_k8s<B: Backend>(f: &mut Frame<B>, app: &mut App<'_>, area: Rect) {
                 app.kind_detail.items.push(format!("{}",e))
             }
         };
-    } else {
-        app.kind_detail.items.push(String::from("None"))
-    }
+    } 
+    // else {
+    //     app.kind_detail.items.push(String::from("None"))
+    // }
 
     let items: Vec<ListItem> = app
         .kind_detail.items
