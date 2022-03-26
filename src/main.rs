@@ -17,7 +17,7 @@ use log::{debug, error, info, warn};
 // use log4rs;
 
 mod server;
-use server::{server1,server_tokio,server_async,run_wrap};
+use server::{server1,server_tokio,server_async,run_wrap,metrics};
 
 mod fzf;
 use fzf::run_input;
@@ -209,6 +209,11 @@ async fn main() -> Result<(), Error> {
             SubCommand::with_name("wrap")
                 .about("wrap server")
                 .version("0.2")
+        )
+        .subcommand(
+            SubCommand::with_name("metrics")
+                .about("prometheus exporter")
+                .version("0.1")
         )
         .get_matches();
 
@@ -410,6 +415,9 @@ async fn main() -> Result<(), Error> {
         run_wrap().await;
     }
 
+    if let Some(matches) = matches.subcommand_matches("metrics") {
+        metrics();
+    }
     Ok(())
 }
 

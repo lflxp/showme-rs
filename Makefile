@@ -8,6 +8,9 @@ server:
 
 fzf:
 	cargo run --bin clapdemo -- fzf
+
+metrics:
+	cargo run -- metrics
 	
 wrap:
 	@echo curl http://127.0.0.1:3030/ex/src/main.rs
