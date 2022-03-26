@@ -185,7 +185,7 @@ impl<'a> App<'a> {
         //     Command::new("sh").arg("-c").arg("git log --pretty=format:'%h %s'").output().expect("sh exec error!");
         // };
 
-        let output = Command::new("sh").arg("-c").arg("git log --pretty=format:'%h %s %cr'").output().expect("命令执行异常错误提示");
+        let output = Command::new("sh").arg("-c").arg("git log --pretty=format:'%h - %s - %cn(%ce) - %cr'").output().expect("命令执行异常错误提示");
         let ls_la_list = String::from_utf8(output.stdout);
         // println!("{:?}",ls_la_list);
         match ls_la_list {
