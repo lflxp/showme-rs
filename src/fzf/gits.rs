@@ -26,7 +26,7 @@ where
     };
 
     let chunks = Layout::default()
-        .constraints(constraints.as_ref())
+        .constraints(constraints)
         .direction(Direction::Horizontal)
         .split(area);
 

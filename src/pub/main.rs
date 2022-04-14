@@ -8,7 +8,7 @@ extern crate paho_mqtt as mqtt;
 
 const DFLT_BROKER:&str = "tcp://122.112.203.73:22224";
 const DFLT_CLIENT:&str = "rust_publish";
-const DFLT_TOPICS:&[&str] = &["rust/mqtt", "rust/test"];
+const DFLT_TOPICS:&[&str] = &["mqtt/8266", "rust/mqtt", "rust/test"];
 // Define the qos.
 const QOS:i32 = 1;
 
@@ -44,21 +44,35 @@ fn main() {
 
     // Create a message and publish it.
     // Publish message to 'test' and 'hello' topics.
-    for num in 0..5 {
-        let content =  "Hello world! ".to_string() + &num.to_string();
-        let mut msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
-        if num % 2 == 0 {
-            println!("Publishing messages on the {:?} topic", DFLT_TOPICS[1]);
-            msg = mqtt::Message::new(DFLT_TOPICS[1], content.clone(), QOS);
-        } else {
-            println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
-        }
-        let tok = cli.publish(msg);
+    // for num in 0..10 {
+    //     let content =  "Hello world! ".to_string() + &num.to_string();
+    //     // let content = &num.to_string();
+    //     // let content = "10025"; 
+    //     let mut msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
+    //     if num % 2 == 0 {
+    //         println!("Publishing messages on the {:?} topic", DFLT_TOPICS[1]);
+    //         msg = mqtt::Message::new(DFLT_TOPICS[1], content.clone(), QOS);
+    //     } else {
+    //         println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
+    //     }
+    //     let tok = cli.publish(msg);
 
-                if let Err(e) = tok {
-                        println!("Error sending message: {:?}", e);
-                        break;
-                }
+    //     if let Err(e) = tok {
+    //             println!("Error sending message: {:?}", e);
+    //             break;
+    //     }
+    // }
+
+    let content =  "H".to_string();
+        // let content = &num.to_string();
+        // let content = "10025"; 
+    let mut msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
+    println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
+    msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
+    let tok = cli.publish(msg);
+
+    if let Err(e) = tok {
+        println!("Error sending message: {:?}", e);
     }
 
 
